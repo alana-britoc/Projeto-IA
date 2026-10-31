@@ -1,0 +1,74 @@
+"""Roda modelo x projeto x cenario x seed e salva em results/metrics/experimentos.csv
+
+ex: python -m src.evaluation.run_experiment --models lr_jit --projects qt --seeds 0 1 2
+"""
+import argparse
+import time
+
+import pandas as pd
+from sklearn.base import clone
+
+from src.data.loader import PROJECTS, ROOT, load_split
+from src.evaluation.metrics import best_threshold, compute_metrics
+from src.models.registry import MODELS, get_model
+
+OUTPUT = ROOT / "results" / "metrics" / "experimentos.csv"
+
+
+def run_one(model_name, project, setting, seed):
+    features, model = get_model(model_name, seed)
+    d = load_split(project, setting, features)
+    X, y = d["X_train"], d["y_train"]
+
+    cut = int(len(y) * 0.8)
+    val_model = clone(model).fit(X[:cut], y[:cut])
+    threshold = best_threshold(y[cut:], val_model.predict_proba(X[cut:])[:, 1])
+
+    t0 = time.perf_counter()
+    model.fit(X, y)
+    train_s = time.perf_counter() - t0
+
+    t0 = time.perf_counter()
+    y_prob = model.predict_proba(d["X_test"])[:, 1]
+    test_s = time.perf_counter() - t0
+
+    row = {"model": model_name, "project": project, "setting": setting, "seed": seed,
+           "n_train": len(y), "n_test": len(d["y_test"])}
+    row.update(compute_metrics(d["y_test"], y_prob, threshold))
+    row.update({"train_s": train_s, "test_s": test_s})
+    return row
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--models", nargs="+", default=list(MODELS))
+    parser.add_argument("--projects", nargs="+", default=PROJECTS)
+    parser.add_argument("--settings", nargs="+", default=["WP", "CP"])
+    parser.add_argument("--seeds", nargs="+", type=int, default=[0])
+    args = parser.parse_args()
+
+    rows = []
+    for model_name in args.models:
+        for project in args.projects:
+            for setting in args.settings:
+                for seed in args.seeds:
+                    r = run_one(model_name, project, setting, seed)
+                    rows.append(r)
+                    print(f"{model_name:10} {project:9} {setting} seed={seed}  "
+                          f"AUC={r['auc']:.4f}  PR-AUC={r['pr_auc']:.4f}  "
+                          f"F1={r['f1']:.4f}  MCC={r['mcc']:.4f}")
+
+    new = pd.DataFrame(rows)
+    # junta com o que ja tinha rodado antes
+    if OUTPUT.exists():
+        old = pd.read_csv(OUTPUT)
+        keys = ["model", "project", "setting", "seed"]
+        old = old[~old.set_index(keys).index.isin(new.set_index(keys).index)]
+        new = pd.concat([old, new], ignore_index=True)
+    new.to_csv(OUTPUT, index=False)
+    print(f"\nSalvo em {OUTPUT.relative_to(ROOT)}")
+
+
+if __name__ == "__main__":
+    main()
