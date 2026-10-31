@@ -1,4 +1,5 @@
 # modelos do experimento. pra add um novo e so colocar no MODELS
+from scipy.stats import loguniform
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -12,8 +13,10 @@ def _logistic(seed):
 
 
 MODELS = {
+    # lapredict sem busca pra ficar igual ao do artigo
     "lapredict": {"features": ["la"], "build": _logistic},
-    "lr_jit": {"features": FEATURES, "build": _logistic},
+    "lr_jit": {"features": FEATURES, "build": _logistic,
+               "params": {"logisticregression__C": loguniform(1e-3, 1e2)}},
 }
 
 
@@ -21,4 +24,4 @@ def get_model(name, seed=0):
     if name not in MODELS:
         raise KeyError(f"modelo desconhecido: {name}. Opções: {', '.join(MODELS)}")
     spec = MODELS[name]
-    return spec["features"], spec["build"](seed)
+    return spec["features"], spec["build"](seed), spec.get("params")

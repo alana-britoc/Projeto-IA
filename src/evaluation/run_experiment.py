@@ -3,10 +3,12 @@
 ex: python -m src.evaluation.run_experiment --models lr_jit --projects qt --seeds 0 1 2
 """
 import argparse
+import json
 import time
 
 import pandas as pd
 from sklearn.base import clone
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
 
 from src.data.loader import PROJECTS, ROOT, load_split
 from src.evaluation.metrics import best_threshold, compute_metrics
@@ -15,10 +17,23 @@ from src.models.registry import MODELS, get_model
 OUTPUT = ROOT / "results" / "metrics" / "experimentos.csv"
 
 
-def run_one(model_name, project, setting, seed):
-    features, model = get_model(model_name, seed)
+def tune(model, params, X, y, seed, n_iter):
+    search = RandomizedSearchCV(model, params, n_iter=n_iter, scoring="roc_auc",
+                                cv=TimeSeriesSplit(n_splits=3), random_state=seed, n_jobs=-1)
+    search.fit(X, y)
+    return clone(search.best_estimator_), search.best_params_, search.best_score_
+
+
+def run_one(model_name, project, setting, seed, n_iter=20):
+    features, model, params = get_model(model_name, seed)
     d = load_split(project, setting, features)
     X, y = d["X_train"], d["y_train"]
+
+    best_params, cv_auc, tune_s = {}, None, 0.0
+    if params and n_iter > 0:
+        t0 = time.perf_counter()
+        model, best_params, cv_auc = tune(model, params, X, y, seed, n_iter)
+        tune_s = time.perf_counter() - t0
 
     cut = int(len(y) * 0.8)
     val_model = clone(model).fit(X[:cut], y[:cut])
@@ -35,7 +50,8 @@ def run_one(model_name, project, setting, seed):
     row = {"model": model_name, "project": project, "setting": setting, "seed": seed,
            "n_train": len(y), "n_test": len(d["y_test"])}
     row.update(compute_metrics(d["y_test"], y_prob, threshold))
-    row.update({"train_s": train_s, "test_s": test_s})
+    row.update({"cv_auc": cv_auc, "best_params": json.dumps(best_params, default=float),
+                "tune_s": tune_s, "train_s": train_s, "test_s": test_s})
     return row
 
 
@@ -46,6 +62,8 @@ def main():
     parser.add_argument("--projects", nargs="+", default=PROJECTS)
     parser.add_argument("--settings", nargs="+", default=["WP", "CP"])
     parser.add_argument("--seeds", nargs="+", type=int, default=[0])
+    parser.add_argument("--n-iter", type=int, default=20,
+                        help="combinações testadas na busca de hiperparâmetros (0 desliga)")
     args = parser.parse_args()
 
     rows = []
@@ -53,7 +71,7 @@ def main():
         for project in args.projects:
             for setting in args.settings:
                 for seed in args.seeds:
-                    r = run_one(model_name, project, setting, seed)
+                    r = run_one(model_name, project, setting, seed, args.n_iter)
                     rows.append(r)
                     print(f"{model_name:10} {project:9} {setting} seed={seed}  "
                           f"AUC={r['auc']:.4f}  PR-AUC={r['pr_auc']:.4f}  "
