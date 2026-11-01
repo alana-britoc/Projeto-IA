@@ -76,3 +76,6 @@ results/metrics/*
 *.npz
 *.parquet
 *.feather
+
+# Artigo de referência (direitos autorais da ACM)
+issta2021.pdf
