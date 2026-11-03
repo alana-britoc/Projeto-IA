@@ -1,7 +1,9 @@
 import pandas as pd
 import pytest
 
-from src.evaluation.compare import aggregate, build_comparison, load_results, paper_results
+from src.data.loader import PROJECTS
+from src.evaluation.compare import (aggregate, build_comparison, load_results, metric_table,
+                                    paper_results, summary_table)
 
 
 def _rows(model, auc_by_seed, project="qt", setting="WP"):
@@ -50,3 +52,33 @@ def test_build_comparison_prefere_o_modelo_rodado_por_nos():
     assert len(deepjit) == 1
     assert deepjit["source"].iloc[0] == "nosso"
     assert set(comp["model"]) == {"deepjit", "lapredict", "cc2vec", "dbn_jit"}
+
+
+def _comp():
+    rows = []
+    for p in PROJECTS:
+        for s in ("WP", "CP"):
+            rows += _rows("lapredict", [0.70], p, s) + _rows("bom", [0.80], p, s)
+    return build_comparison(pd.DataFrame(rows))
+
+
+def test_metric_table_tem_media_por_cenario_e_baseline_primeiro():
+    t = metric_table(_comp(), "auc")
+    assert t.index[0] == "lapredict"
+    assert ("WP", "media") in t.columns and ("CP", "media") in t.columns
+    assert t.loc["bom", ("WP", "media")] == pytest.approx(0.80)
+    # colunas na ordem: WP antes de CP, media por ultimo
+    assert list(t.columns) == ([("WP", p) for p in PROJECTS] + [("WP", "media")]
+                               + [("CP", p) for p in PROJECTS] + [("CP", "media")])
+
+
+def test_metric_table_descarta_modelo_sem_a_metrica():
+    # os modelos do artigo nao tem mcc
+    t = metric_table(_comp(), "mcc")
+    assert set(t.index) == {"lapredict", "bom"}
+
+
+def test_summary_table_tem_as_quatro_metricas():
+    s = summary_table(_comp())
+    assert {m for m, _ in s.columns} == {"auc", "pr_auc", "f1", "mcc"}
+    assert s.loc["bom", ("auc", "CP")] == pytest.approx(0.80)
