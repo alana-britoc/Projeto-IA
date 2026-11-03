@@ -57,9 +57,10 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
-# Resultados gerados: so os csvs de metricas entram no repositorio
+# Resultados gerados: so os csvs de metricas e os png da comparacao entram no repositorio
 results/figures/*
 !results/figures/.gitkeep
+!results/figures/*.png
 results/metrics/*
 !results/metrics/.gitkeep
 !results/metrics/*.csv
