@@ -4,7 +4,7 @@ Le todos os results/metrics/experimentos_*.csv, entao modelo novo entra sozinho.
 """
 import pandas as pd
 
-from src.data.loader import ROOT
+from src.data.loader import PROJECTS, ROOT
 from src.evaluation.reproduce import REFERENCE, load_reference
 
 METRICS_DIR = ROOT / "results" / "metrics"
@@ -51,3 +51,35 @@ def build_comparison(results, path=REFERENCE):
     # se alguem rodar o modelo de verdade (ex: #6), o nosso substitui o do artigo
     paper = paper_results(skip=set(ours["model"]), path=path)
     return pd.concat([ours, paper], ignore_index=True)
+
+
+def model_order(comp, baseline="lapredict"):
+    # baseline primeiro, depois por AUC media decrescente
+    mean_auc = comp.groupby("model")["auc"].mean().sort_values(ascending=False)
+    others = [m for m in mean_auc.index if m != baseline]
+    return ([baseline] if baseline in mean_auc.index else []) + others
+
+
+def metric_table(comp, metric):
+    """Uma linha por modelo, uma coluna por projeto x cenario, mais a media de WP e de CP."""
+    table = comp.pivot_table(index="model", columns=["setting", "project"], values=metric,
+                             dropna=False)
+    table = table.dropna(how="all")
+    for setting in ("WP", "CP"):
+        if setting in table.columns.get_level_values(0):
+            table[(setting, "media")] = table[setting].mean(axis=1, skipna=False)
+    table = table.reindex(columns=sorted(table.columns, key=_column_key))
+    return table.reindex([m for m in model_order(comp) if m in table.index])
+
+
+def _column_key(col):
+    setting, project = col
+    order = PROJECTS + ["media"]
+    return (["WP", "CP"].index(setting), order.index(project) if project in order else 99)
+
+
+def summary_table(comp):
+    """Media das 6 bases por modelo e cenario, com as 4 metricas lado a lado."""
+    summ = comp.groupby(["model", "setting"])[METRICS].mean().unstack("setting")
+    summ = summ.reindex(columns=[(m, s) for m in METRICS for s in ("WP", "CP")])
+    return summ.reindex(model_order(comp))
