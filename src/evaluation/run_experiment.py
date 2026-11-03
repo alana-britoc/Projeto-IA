@@ -31,14 +31,15 @@ def run_one(model_name, project, setting, seed, n_iter=20):
     features, model, params = get_model(model_name, seed)
     d = load_split(project, setting, features)
     X, y = d["X_train"], d["y_train"]
+    # os 20% finais do treino ficam so pro limiar, a busca nao olha eles
+    cut = int(len(y) * 0.8)
 
     best_params, cv_auc, tune_s = {}, None, 0.0
     if params and n_iter > 0:
         t0 = time.perf_counter()
-        model, best_params, cv_auc = tune(model, params, X, y, seed, n_iter)
+        model, best_params, cv_auc = tune(model, params, X[:cut], y[:cut], seed, n_iter)
         tune_s = time.perf_counter() - t0
 
-    cut = int(len(y) * 0.8)
     val_model = clone(model).fit(X[:cut], y[:cut])
     threshold = best_threshold(y[cut:], val_model.predict_proba(X[cut:])[:, 1])
 

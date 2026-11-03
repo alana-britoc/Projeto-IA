@@ -36,6 +36,21 @@ def test_run_one_com_busca_registra_n_iter(output):
     assert 0 <= row["auc"] <= 1
 
 
+def test_busca_nao_ve_os_20_porcento_finais_do_treino(output, monkeypatch):
+    original = run_experiment.tune
+    vistos = []
+
+    def tune_espiao(model, params, X, y, seed, n_iter):
+        vistos.append(X.copy())
+        return original(model, params, X, y, seed, n_iter)
+
+    monkeypatch.setattr(run_experiment, "tune", tune_espiao)
+    run_experiment.run_one("lr_jit", "qt", "WP", 0, n_iter=2)
+    # fake_split tem 200 commits de treino
+    X_train = fake_split("qt", "WP", run_experiment.get_model("lr_jit")[0])["X_train"]
+    assert np.array_equal(vistos[0], X_train[:160])
+
+
 def test_run_one_sem_busca_registra_zero(output):
     row = run_experiment.run_one("lapredict", "qt", "WP", 0, n_iter=20)
     assert row["n_iter"] == 0

@@ -7,6 +7,7 @@ from sklearn.metrics import (average_precision_score, f1_score, matthews_corrcoe
 
 def best_threshold(y_true, y_prob):
     # pega o limiar com maior f1 (rodar na validacao, nunca no teste)
+    # o mcc usa esse mesmo limiar, nao tem um proprio (decidido na #10)
     precision, recall, thresholds = precision_recall_curve(y_true, y_prob)
     # o ultimo ponto da curva nao tem limiar
     precision, recall = precision[:-1], recall[:-1]
