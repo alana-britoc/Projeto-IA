@@ -2,9 +2,9 @@ import pandas as pd
 import pytest
 
 from src.data.loader import PROJECTS
-from src.evaluation.compare import (aggregate, all_tests, build_comparison, compare_to_baseline,
-                                    load_results, metric_table, paper_results,
-                                    summary_table, verdict)
+from src.evaluation.compare import (aggregate, all_tests, answer, build_comparison,
+                                    compare_to_baseline, load_results, metric_table,
+                                    paper_results, summary_table, verdict)
 
 
 def _rows(model, auc_by_seed, project="qt", setting="WP"):
@@ -133,3 +133,20 @@ def test_all_tests_cobre_as_quatro_metricas():
     t = all_tests(_comp_com_ruido())
     assert set(t["metric"]) == {"auc", "pr_auc", "f1", "mcc"}
     assert t.set_index(["metric", "model"]).loc[("f1", "bom"), "verdict"] == "supera"
+
+
+def test_answer_cita_quem_supera():
+    text = answer(all_tests(_comp_com_ruido()))
+    assert "**Sim:**" in text
+    assert "bom em AUC" in text
+    assert "| bom | MCC |" in text
+
+
+def test_answer_sem_vencedor_diz_nao():
+    rows = []
+    for p in PROJECTS:
+        for s in ("WP", "CP"):
+            rows += _rows("lapredict", [0.7], p, s) + _rows("igual", [0.7], p, s)
+    text = answer(all_tests(build_comparison(pd.DataFrame(rows))))
+    assert text.startswith("## Algum modelo supera o lapredict?")
+    assert "**Não.**" in text
