@@ -2,8 +2,9 @@ import pandas as pd
 import pytest
 
 from src.data.loader import PROJECTS
-from src.evaluation.compare import (aggregate, build_comparison, load_results, metric_table,
-                                    paper_results, summary_table)
+from src.evaluation.compare import (aggregate, all_tests, build_comparison, compare_to_baseline,
+                                    load_results, metric_table, paper_results,
+                                    summary_table, verdict)
 
 
 def _rows(model, auc_by_seed, project="qt", setting="WP"):
@@ -82,3 +83,53 @@ def test_summary_table_tem_as_quatro_metricas():
     s = summary_table(_comp())
     assert {m for m, _ in s.columns} == {"auc", "pr_auc", "f1", "mcc"}
     assert s.loc["bom", ("auc", "CP")] == pytest.approx(0.80)
+
+
+def _comp_com_ruido():
+    # "bom" ganha do lapredict em todos os 12 pares, "igual" empata
+    rows = []
+    for i, p in enumerate(PROJECTS):
+        for j, s in enumerate(("WP", "CP")):
+            base = 0.65 + 0.01 * i + 0.003 * j
+            rows += (_rows("lapredict", [base], p, s) + _rows("bom", [base + 0.05 + 0.001 * i], p, s)
+                     + _rows("igual", [base], p, s))
+    return build_comparison(pd.DataFrame(rows))
+
+
+def test_compare_to_baseline_detecta_quem_supera():
+    t = compare_to_baseline(_comp_com_ruido(), "auc").set_index("model")
+    assert t.loc["bom", "n"] == 12
+    assert t.loc["bom", "p_holm"] < 0.05
+    assert t.loc["bom", "delta"] > 0
+    assert t.loc["igual", "p_value"] == 1.0
+    # modelos do artigo entram na AUC
+    assert {"deepjit", "cc2vec", "dbn_jit"} <= set(t.index)
+    assert "lapredict" not in t.index
+
+
+def test_compare_to_baseline_pula_modelo_sem_a_metrica():
+    t = compare_to_baseline(_comp_com_ruido(), "mcc")
+    assert set(t["model"]) == {"bom", "igual"}
+
+
+def test_compare_to_baseline_sem_baseline_quebra():
+    comp = build_comparison(pd.DataFrame(_rows("bom", [0.8])))
+    with pytest.raises(KeyError):
+        compare_to_baseline(comp, "auc")
+
+
+@pytest.mark.parametrize("p_holm, delta, magnitude, esperado", [
+    (0.01, 0.5, "grande", "supera"),
+    (0.01, -0.5, "grande", "perde"),
+    (0.20, 0.5, "grande", "empate"),
+    (0.01, 0.1, "negligível", "empate"),
+    (float("nan"), 0.5, "grande", "empate"),
+])
+def test_verdict(p_holm, delta, magnitude, esperado):
+    assert verdict({"p_holm": p_holm, "delta": delta, "magnitude": magnitude}) == esperado
+
+
+def test_all_tests_cobre_as_quatro_metricas():
+    t = all_tests(_comp_com_ruido())
+    assert set(t["metric"]) == {"auc", "pr_auc", "f1", "mcc"}
+    assert t.set_index(["metric", "model"]).loc[("f1", "bom"), "verdict"] == "supera"
