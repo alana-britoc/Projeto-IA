@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src.evaluation.compare import aggregate, load_results
+from src.evaluation.compare import aggregate, build_comparison, load_results, paper_results
 
 
 def _rows(model, auc_by_seed, project="qt", setting="WP"):
@@ -30,3 +30,23 @@ def test_aggregate_tira_a_media_das_seeds():
     assert agg.loc["WP", "auc"] == pytest.approx(0.7)
     assert agg.loc["WP", "mcc"] == pytest.approx(0.175)
     assert (agg["source"] == "nosso").all()
+
+
+def test_paper_results_so_tem_auc():
+    df = paper_results()
+    assert set(df["model"]) == {"deepjit", "cc2vec", "dbn_jit"}
+    # 6 projetos x 2 cenarios, sem a linha de media
+    assert (df.groupby("model").size() == 12).all()
+    assert "Mean" not in set(df["project"])
+    assert df["auc"].notna().all()
+    assert df[["pr_auc", "f1", "mcc"]].isna().all().all()
+    assert (df["source"] == "artigo").all()
+
+
+def test_build_comparison_prefere_o_modelo_rodado_por_nos():
+    ours = pd.DataFrame(_rows("deepjit", [0.9]) + _rows("lapredict", [0.7]))
+    comp = build_comparison(ours)
+    deepjit = comp[comp["model"] == "deepjit"]
+    assert len(deepjit) == 1
+    assert deepjit["source"].iloc[0] == "nosso"
+    assert set(comp["model"]) == {"deepjit", "lapredict", "cc2vec", "dbn_jit"}
