@@ -1,6 +1,6 @@
 import pytest
 
-from src.evaluation.stats import cliffs_delta
+from src.evaluation.stats import cliffs_delta, delta_magnitude
 
 
 def test_cliffs_delta_dominancia_total():
@@ -20,3 +20,11 @@ def test_cliffs_delta_valor_conhecido():
 def test_cliffs_delta_amostra_vazia_quebra():
     with pytest.raises(ValueError):
         cliffs_delta([], [1, 2])
+
+
+@pytest.mark.parametrize("delta, esperado", [
+    (0.0, "negligível"), (0.1, "negligível"), (-0.2, "pequeno"),
+    (0.4, "médio"), (-0.474, "grande"), (1.0, "grande"),
+])
+def test_delta_magnitude(delta, esperado):
+    assert delta_magnitude(delta) == esperado
