@@ -35,3 +35,18 @@ def test_best_threshold_separa_as_classes():
     t = best_threshold(y, prob)
     assert 0.3 < t <= 0.6
     assert compute_metrics(y, prob, t)["f1"] == pytest.approx(1.0)
+
+
+def test_best_threshold_nao_arredonda_as_probabilidades():
+    y = np.array([1, 0])
+    prob = np.array([0.12346, 0.1])
+    t = best_threshold(y, prob)
+    assert t == pytest.approx(0.12346)
+    assert compute_metrics(y, prob, t)["f1"] == pytest.approx(1.0)
+
+
+def test_best_threshold_com_probabilidades_muito_baixas():
+    y = np.array([0, 0, 1, 1])
+    prob = np.array([0.00001, 0.00002, 0.00003, 0.00004])
+    t = best_threshold(y, prob)
+    assert compute_metrics(y, prob, t)["f1"] == pytest.approx(1.0)

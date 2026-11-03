@@ -1,14 +1,19 @@
 # auc e pr-auc nao dependem do limiar, o resto depende
 import numpy as np
 from sklearn.metrics import (average_precision_score, f1_score, matthews_corrcoef,
-                             precision_score, recall_score, roc_auc_score)
+                             precision_recall_curve, precision_score, recall_score,
+                             roc_auc_score)
 
 
 def best_threshold(y_true, y_prob):
     # pega o limiar com maior f1 (rodar na validacao, nunca no teste)
-    candidates = np.unique(np.round(y_prob, 4))
-    scores = [f1_score(y_true, y_prob >= t, zero_division=0) for t in candidates]
-    return float(candidates[int(np.argmax(scores))])
+    # o mcc usa esse mesmo limiar, nao tem um proprio (decidido na #10)
+    precision, recall, thresholds = precision_recall_curve(y_true, y_prob)
+    # o ultimo ponto da curva nao tem limiar
+    precision, recall = precision[:-1], recall[:-1]
+    total = precision + recall
+    scores = np.divide(2 * precision * recall, total, out=np.zeros_like(total), where=total > 0)
+    return float(thresholds[int(np.argmax(scores))])
 
 
 def compute_metrics(y_true, y_prob, threshold=0.5):
