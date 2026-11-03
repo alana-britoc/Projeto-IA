@@ -22,3 +22,20 @@ def delta_magnitude(delta):
     if d < 0.474:
         return "médio"
     return "grande"
+
+
+def holm(p_values):
+    # correcao de Holm-Bonferroni, pq comparamos varios modelos contra o mesmo baseline
+    p = np.asarray(p_values, dtype=float)
+    out = np.full_like(p, np.nan)
+    ok = ~np.isnan(p)
+    vals = p[ok]
+    m = len(vals)
+    order = np.argsort(vals)
+    adj = np.empty(m)
+    running = 0.0
+    for rank, i in enumerate(order):
+        running = max(running, (m - rank) * vals[i])
+        adj[i] = min(running, 1.0)
+    out[ok] = adj
+    return out
