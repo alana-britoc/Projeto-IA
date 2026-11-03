@@ -4,7 +4,7 @@ import pytest
 from src.data.loader import PROJECTS
 from src.evaluation.compare import (aggregate, all_tests, answer, build_comparison,
                                     compare_to_baseline, load_results, metric_table,
-                                    paper_results, summary_table, verdict)
+                                    paper_results, save_outputs, summary_table, verdict)
 
 
 def _rows(model, auc_by_seed, project="qt", setting="WP"):
@@ -150,3 +150,18 @@ def test_answer_sem_vencedor_diz_nao():
     text = answer(all_tests(build_comparison(pd.DataFrame(rows))))
     assert text.startswith("## Algum modelo supera o lapredict?")
     assert "**Não.**" in text
+
+
+def test_save_outputs_gera_tabelas_e_relatorio(tmp_path):
+    comp = _comp_com_ruido()
+    paths = save_outputs(comp, all_tests(comp), tmp_path, tmp_path / "comparacao.md")
+    names = {p.name for p in paths}
+    assert {"comparacao_resultados.csv", "comparacao_resumo.csv", "comparacao_testes.csv",
+            "comparacao_auc.csv", "comparacao_pr_auc.csv", "comparacao_f1.csv",
+            "comparacao_mcc.csv", "comparacao.md"} == names
+    # o load_results nao pode confundir as tabelas da comparacao com experimentos
+    assert not list(tmp_path.glob("experimentos_*.csv"))
+    report = (tmp_path / "comparacao.md").read_text(encoding="utf-8")
+    assert "## Algum modelo supera o lapredict?" in report
+    assert "| bom |" in report
+    assert "só a AUC publicada" in report
