@@ -104,3 +104,35 @@ def plot_auc_by_project(comp, order, path=None):
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)
     return path
+
+
+def plot_effect_sizes(tests, baseline="lapredict", path=None):
+    """Cliff's delta contra o baseline, um painel por metrica. Faixa cinza = efeito negligivel."""
+    path = path or FIGURES_DIR / "cliffs_delta_lapredict.png"
+    metrics = [m for m in METRIC_NAMES if m in set(tests["metric"])]
+    rows = int(tests["metric"].value_counts().max())
+    fig, axes = plt.subplots(1, len(metrics), figsize=(3.2 * len(metrics) + 1, 3.8),
+                             facecolor=SURFACE, squeeze=False)
+    for ax, metric in zip(axes[0], metrics):
+        _style(ax)
+        sub = tests[tests["metric"] == metric].reset_index(drop=True)
+        ax.axvspan(-0.147, 0.147, color=GRID, alpha=0.6, zorder=0)
+        ax.axvline(0, color=AXIS, linewidth=1, zorder=1)
+        colors = [PALETTE[0] if d > 0 else PALETTE[1] for d in sub["delta"]]
+        ax.barh(range(len(sub)), sub["delta"], height=0.55, color=colors, zorder=2)
+        for y, r in sub.iterrows():
+            mark = "*" if r["p_holm"] < 0.05 else ""
+            ha, x = ("left", r["delta"] + 0.04) if r["delta"] >= 0 else ("right", r["delta"] - 0.04)
+            ax.text(x, y, f"{r['delta']:+.2f}{mark}", va="center", ha=ha, fontsize=8, color=INK_2)
+        ax.set_yticks(range(len(sub)), sub["model"])
+        # mesma altura de linha em todos os paineis, mesmo com um modelo so
+        ax.set_ylim(rows - 0.5, -0.5)
+        ax.set_xlim(-1.15, 1.15)
+        ax.set_title(METRIC_NAMES[metric], loc="left", color=INK, fontsize=11, fontweight="bold")
+    fig.suptitle(f"Cliff's delta contra o {baseline} (positivo = melhor que o {baseline}; "
+                 "* = p < 0,05 no Wilcoxon com Holm)", x=0.01, ha="left", color=INK, fontsize=11)
+    fig.tight_layout(rect=(0, 0, 1, 0.9))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
+    return path
