@@ -1,6 +1,7 @@
+import numpy as np
 import pytest
 
-from src.evaluation.stats import cliffs_delta, delta_magnitude
+from src.evaluation.stats import cliffs_delta, delta_magnitude, holm
 
 
 def test_cliffs_delta_dominancia_total():
@@ -28,3 +29,20 @@ def test_cliffs_delta_amostra_vazia_quebra():
 ])
 def test_delta_magnitude(delta, esperado):
     assert delta_magnitude(delta) == esperado
+
+
+def test_holm_valores_conhecidos():
+    # ordenado: 0.01*3, 0.02*2, 0.04*1 -> 0.03, 0.04, 0.04 (monotono)
+    adj = holm([0.04, 0.01, 0.02])
+    assert adj == pytest.approx([0.04, 0.03, 0.04])
+
+
+def test_holm_nao_passa_de_um():
+    assert holm([0.6, 0.7]).max() == 1.0
+
+
+def test_holm_ignora_nan():
+    adj = holm([0.01, np.nan, 0.02])
+    assert np.isnan(adj[1])
+    assert adj[0] == pytest.approx(0.02)
+    assert adj[2] == pytest.approx(0.02)
