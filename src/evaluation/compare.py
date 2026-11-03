@@ -6,10 +6,13 @@ import pandas as pd
 
 from src.data.loader import PROJECTS, ROOT
 from src.evaluation.reproduce import REFERENCE, load_reference
+from src.evaluation.stats import holm, paired_test
 
 METRICS_DIR = ROOT / "results" / "metrics"
 METRICS = ["auc", "pr_auc", "f1", "mcc"]
 KEYS = ["model", "project", "setting"]
+BASELINE = "lapredict"
+ALPHA = 0.05
 # modelos do artigo que a gente nao roda. LApredict e LR-JIT ficam de fora pq ja temos os nossos
 PAPER_MODELS = {"DeepJIT": "deepjit", "CC2Vec": "cc2vec", "DBN-JIT": "dbn_jit"}
 
@@ -83,3 +86,26 @@ def summary_table(comp):
     summ = comp.groupby(["model", "setting"])[METRICS].mean().unstack("setting")
     summ = summ.reindex(columns=[(m, s) for m in METRICS for s in ("WP", "CP")])
     return summ.reindex(model_order(comp))
+
+
+def compare_to_baseline(comp, metric, baseline=BASELINE):
+    """Wilcoxon pareado + Cliff's delta de cada modelo contra o baseline numa metrica.
+
+    Os pares sao projeto x cenario (12 quando o modelo tem todos). O p-valor e corrigido
+    com Holm entre os modelos comparados na mesma metrica.
+    """
+    wide = comp.pivot_table(index=["project", "setting"], columns="model", values=metric,
+                            dropna=False)
+    if baseline not in wide.columns:
+        raise KeyError(f"baseline {baseline} sem resultados de {metric}")
+    rows = []
+    for model in model_order(comp, baseline):
+        if model == baseline or model not in wide.columns or wide[model].isna().all():
+            continue
+        r = paired_test(wide[model].to_numpy(), wide[baseline].to_numpy())
+        rows.append({"metric": metric, "model": model, "baseline": baseline, **r})
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+    out["p_holm"] = holm(out["p_value"])
+    return out
