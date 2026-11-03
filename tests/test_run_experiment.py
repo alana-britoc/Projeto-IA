@@ -17,10 +17,9 @@ def fake_split(project, setting, features):
 
 @pytest.fixture
 def output(tmp_path, monkeypatch):
-    path = tmp_path / "experimentos.csv"
-    monkeypatch.setattr(run_experiment, "OUTPUT", path)
+    monkeypatch.setattr(run_experiment, "OUTPUT_DIR", tmp_path)
     monkeypatch.setattr(run_experiment, "load_split", fake_split)
-    return path
+    return tmp_path
 
 
 def run_main(monkeypatch, *args):
@@ -71,7 +70,7 @@ def test_save_junta_e_substitui_a_mesma_execucao(output):
     run_experiment.save({**base, "seed": 0, "auc": 0.1})
     run_experiment.save({**base, "seed": 1, "auc": 0.2})
     run_experiment.save({**base, "seed": 0, "auc": 0.3})
-    df = pd.read_csv(output).sort_values("seed")
+    df = pd.read_csv(output / "experimentos_m.csv").sort_values("seed")
     assert df["seed"].tolist() == [0, 1]
     assert df["auc"].tolist() == [0.3, 0.2]
 
@@ -88,7 +87,7 @@ def test_grade_interrompida_mantem_o_que_ja_rodou(output, monkeypatch):
     with pytest.raises(RuntimeError):
         run_main(monkeypatch, "--models", "lapredict", "--projects", "qt",
                  "--settings", "WP", "--seeds", "0", "1")
-    assert pd.read_csv(output)["seed"].tolist() == [0]
+    assert pd.read_csv(output / "experimentos_lapredict.csv")["seed"].tolist() == [0]
 
 
 @pytest.mark.parametrize("args", [["--models", "nao_existe"], ["--projects", "nao_existe"],
@@ -96,4 +95,12 @@ def test_grade_interrompida_mantem_o_que_ja_rodou(output, monkeypatch):
 def test_argumento_invalido_falha_antes_de_rodar(output, monkeypatch, args):
     with pytest.raises(SystemExit):
         run_main(monkeypatch, *args)
-    assert not output.exists()
+    assert not list(output.glob("*.csv"))
+
+
+def test_cada_modelo_salva_no_proprio_arquivo(output):
+    base = {"project": "qt", "setting": "WP", "seed": 0}
+    run_experiment.save({**base, "model": "a", "auc": 0.1})
+    run_experiment.save({**base, "model": "b", "auc": 0.2})
+    assert pd.read_csv(output / "experimentos_a.csv")["auc"].tolist() == [0.1]
+    assert pd.read_csv(output / "experimentos_b.csv")["auc"].tolist() == [0.2]
