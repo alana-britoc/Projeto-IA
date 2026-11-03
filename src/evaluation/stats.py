@@ -10,3 +10,15 @@ def cliffs_delta(a, b):
         raise ValueError("cliffs_delta precisa de duas amostras nao vazias")
     diff = a[:, None] - b[None, :]
     return float((np.sign(diff)).sum() / diff.size)
+
+
+def delta_magnitude(delta):
+    # limiares de Romano et al. (2006), os mais usados em engenharia de software
+    d = abs(delta)
+    if d < 0.147:
+        return "negligível"
+    if d < 0.33:
+        return "pequeno"
+    if d < 0.474:
+        return "médio"
+    return "grande"
