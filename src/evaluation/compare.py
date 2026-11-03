@@ -123,3 +123,26 @@ def all_tests(comp, baseline=BASELINE):
     out = pd.concat([t for t in tests if not t.empty], ignore_index=True)
     out["verdict"] = out.apply(verdict, axis=1)
     return out
+
+
+METRIC_NAMES = {"auc": "AUC", "pr_auc": "PR-AUC", "f1": "F1", "mcc": "MCC"}
+
+
+def answer(tests, baseline=BASELINE, alpha=ALPHA):
+    """Responde em texto: algum modelo supera o baseline?"""
+    winners = tests[tests["verdict"] == "supera"]
+    lines = [f"## Algum modelo supera o {baseline}?", ""]
+    if winners.empty:
+        lines.append(f"**Não.** Nenhum modelo foi significativamente melhor que o {baseline} "
+                     f"em nenhuma métrica (Wilcoxon pareado com Holm, alfa = {alpha}, "
+                     "e Cliff's delta não negligível).")
+    else:
+        found = ", ".join(f"{r.model} em {METRIC_NAMES[r.metric]}" for r in winners.itertuples())
+        lines.append(f"**Sim:** {found}.")
+    lines += ["", "| Modelo | Métrica | Pares | Vitórias/derrotas | Mediana da diferença "
+              "| p (Holm) | Cliff's delta | Resultado |", "|---|---|---|---|---|---|---|---|"]
+    for r in tests.itertuples():
+        lines.append(f"| {r.model} | {METRIC_NAMES[r.metric]} | {r.n} | {r.wins}/{r.losses} "
+                     f"| {r.median_diff:+.4f} | {r.p_holm:.4f} | {r.delta:+.3f} ({r.magnitude}) "
+                     f"| {r.verdict} |")
+    return "\n".join(lines) + "\n"
