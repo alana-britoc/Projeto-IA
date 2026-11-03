@@ -57,11 +57,12 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
-# Resultados e artefatos gerados: mantenha apenas os marcadores
+# Resultados gerados: so os csvs de metricas entram no repositorio
 results/figures/*
 !results/figures/.gitkeep
 results/metrics/*
 !results/metrics/.gitkeep
+!results/metrics/*.csv
 
 # Artefatos comuns de modelos e dados grandes
 *.pkl
