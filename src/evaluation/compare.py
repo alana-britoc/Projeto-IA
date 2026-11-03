@@ -109,3 +109,17 @@ def compare_to_baseline(comp, metric, baseline=BASELINE):
         return out
     out["p_holm"] = holm(out["p_value"])
     return out
+
+
+def verdict(row, alpha=ALPHA):
+    # so conta como diferenca real se for significativa depois do Holm e o efeito nao for negligivel
+    if pd.isna(row["p_holm"]) or row["p_holm"] >= alpha or row["magnitude"] == "negligível":
+        return "empate"
+    return "supera" if row["delta"] > 0 else "perde"
+
+
+def all_tests(comp, baseline=BASELINE):
+    tests = [compare_to_baseline(comp, m, baseline) for m in METRICS]
+    out = pd.concat([t for t in tests if not t.empty], ignore_index=True)
+    out["verdict"] = out.apply(verdict, axis=1)
+    return out
