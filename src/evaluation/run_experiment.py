@@ -1,4 +1,4 @@
-"""Roda modelo x projeto x cenario x seed e salva em results/metrics/experimentos.csv
+"""Roda modelo x projeto x cenario x seed e salva em results/metrics/experimentos_<modelo>.csv
 
 ex: python -m src.evaluation.run_experiment --models lr_jit --projects qt --seeds 0 1 2
 """
@@ -14,7 +14,12 @@ from src.data.loader import PROJECTS, ROOT, load_split
 from src.evaluation.metrics import best_threshold, compute_metrics
 from src.models.registry import MODELS, get_model
 
-OUTPUT = ROOT / "results" / "metrics" / "experimentos.csv"
+OUTPUT_DIR = ROOT / "results" / "metrics"
+
+
+def output_path(model_name):
+    # um arquivo por modelo pra dois PRs nao mexerem no mesmo csv
+    return OUTPUT_DIR / f"experimentos_{model_name}.csv"
 
 
 def tune(model, params, X, y, seed, n_iter):
@@ -62,17 +67,18 @@ def run_one(model_name, project, setting, seed, n_iter=20):
 
 def save(row):
     # salva a cada execucao pra nao perder a grade se parar no meio
+    path = output_path(row["model"])
     new = pd.DataFrame([row])
     # junta com o que ja tinha rodado antes
-    if OUTPUT.exists():
-        old = pd.read_csv(OUTPUT)
+    if path.exists():
+        old = pd.read_csv(path)
         keys = ["model", "project", "setting", "seed"]
         old = old[~old.set_index(keys).index.isin(new.set_index(keys).index)]
         new = pd.concat([old, new], ignore_index=True)
     # escreve em outro arquivo antes pra nao corromper o csv se cair na escrita
-    tmp = OUTPUT.with_suffix(".tmp")
+    tmp = path.with_suffix(".tmp")
     new.to_csv(tmp, index=False)
-    tmp.replace(OUTPUT)
+    tmp.replace(path)
 
 
 def main():
@@ -96,7 +102,7 @@ def main():
                           f"AUC={r['auc']:.4f}  PR-AUC={r['pr_auc']:.4f}  "
                           f"F1={r['f1']:.4f}  MCC={r['mcc']:.4f}", flush=True)
 
-    print(f"\nSalvo em {OUTPUT}")
+    print("\nSalvo em " + ", ".join(str(output_path(m)) for m in args.models))
 
 
 if __name__ == "__main__":
