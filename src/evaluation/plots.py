@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-from src.data.loader import ROOT  # noqa: E402
+from src.data.loader import PROJECTS, ROOT  # noqa: E402
 
 FIGURES_DIR = ROOT / "results" / "figures"
 
@@ -68,6 +68,38 @@ def plot_metrics(comp, order, baseline="lapredict", path=None):
         fig.text(0.01, 0.01, f"{', '.join(paper)}: AUC publicada no artigo (sem as outras métricas)",
                  color=MUTED, fontsize=8)
     fig.tight_layout(rect=(0, 0.02, 1, 0.95))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
+    return path
+
+
+def plot_auc_by_project(comp, order, path=None):
+    """Barras agrupadas de AUC: um grupo por projeto, um painel por cenario."""
+    path = path or FIGURES_DIR / "auc_por_projeto.png"
+    colors = model_colors(order)
+    n = len(order)
+    width = 0.8 / n
+    fig, axes = plt.subplots(2, 1, figsize=(11, 7), facecolor=SURFACE, sharey=True)
+    for ax, setting in zip(axes, ("WP", "CP")):
+        _style(ax)
+        ax.grid(axis="x", visible=False)
+        ax.grid(axis="y", color=GRID, linewidth=0.8)
+        sub = comp[comp["setting"] == setting].set_index(["model", "project"])["auc"]
+        for i, model in enumerate(order):
+            vals = [sub.get((model, p), float("nan")) for p in PROJECTS]
+            xs = [x - 0.4 + width * (i + 0.5) for x in range(len(PROJECTS))]
+            # gap de superficie entre barras vizinhas
+            ax.bar(xs, vals, width=width, color=colors[model], edgecolor=SURFACE, linewidth=1,
+                   label=model if setting == "WP" else None)
+        ax.set_xticks(range(len(PROJECTS)), PROJECTS)
+        ax.set_ylim(0.5, None)
+        ax.set_title(setting, loc="left", color=INK, fontsize=11, fontweight="bold")
+        ax.set_ylabel("AUC", color=INK_2, fontsize=9)
+    fig.legend(loc="upper right", frameon=False, ncol=n, fontsize=9, labelcolor=INK_2)
+    fig.suptitle("AUC por projeto (eixo começa em 0,5, o acaso)", x=0.01, ha="left", color=INK,
+                 fontsize=12)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)
