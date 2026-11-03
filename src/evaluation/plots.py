@@ -5,6 +5,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from src.data.loader import PROJECTS, ROOT  # noqa: E402
+from src.evaluation.metrics import METRIC_NAMES  # noqa: E402
 
 FIGURES_DIR = ROOT / "results" / "figures"
 
@@ -34,7 +35,6 @@ def _style(ax):
     ax.set_axisbelow(True)
 
 
-METRIC_NAMES = {"auc": "AUC", "pr_auc": "PR-AUC", "f1": "F1", "mcc": "MCC"}
 SETTING_COLORS = {"WP": PALETTE[0], "CP": PALETTE[1]}
 
 

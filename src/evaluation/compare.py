@@ -11,6 +11,7 @@ import pandas as pd
 
 from src.data.loader import PROJECTS, ROOT
 from src.evaluation import plots
+from src.evaluation.metrics import METRIC_NAMES
 from src.evaluation.reproduce import REFERENCE, load_reference
 from src.evaluation.stats import holm, paired_test
 
@@ -129,9 +130,6 @@ def all_tests(comp, baseline=BASELINE):
     out = pd.concat([t for t in tests if not t.empty], ignore_index=True)
     out["verdict"] = out.apply(verdict, axis=1)
     return out
-
-
-METRIC_NAMES = {"auc": "AUC", "pr_auc": "PR-AUC", "f1": "F1", "mcc": "MCC"}
 
 
 def answer(tests, baseline=BASELINE, alpha=ALPHA):
