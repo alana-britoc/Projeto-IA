@@ -1,10 +1,16 @@
 """Comparacao final (#7): junta os resultados de todos os modelos e compara com o LApredict.
 
 Le todos os results/metrics/experimentos_*.csv, entao modelo novo entra sozinho.
+
+Uso: python -m src.evaluation.compare
+Saida: results/metrics/comparacao_*.csv, results/figures/*.png e results/comparacao.md
 """
+import argparse
+
 import pandas as pd
 
 from src.data.loader import PROJECTS, ROOT
+from src.evaluation import plots
 from src.evaluation.reproduce import REFERENCE, load_reference
 from src.evaluation.stats import holm, paired_test
 
@@ -197,3 +203,26 @@ def save_outputs(comp, tests, metrics_dir=METRICS_DIR, report=REPORT):
     report.write_text("\n".join(text), encoding="utf-8")
     paths.append(report)
     return paths
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--baseline", default=BASELINE)
+    args = parser.parse_args()
+
+    comp = build_comparison(load_results())
+    order = model_order(comp, args.baseline)
+    tests = all_tests(comp, args.baseline)
+    paths = save_outputs(comp, tests)
+    paths += [plots.plot_metrics(comp, order, args.baseline),
+              plots.plot_auc_by_project(comp, order),
+              plots.plot_effect_sizes(tests, args.baseline)]
+
+    print(summary_table(comp).round(3).to_string(), "\n")
+    print(answer(tests, args.baseline))
+    print("Salvo em:\n" + "\n".join(f"  {p.relative_to(ROOT)}" for p in paths))
+
+
+if __name__ == "__main__":
+    main()
