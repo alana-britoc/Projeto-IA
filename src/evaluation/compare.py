@@ -146,3 +146,54 @@ def answer(tests, baseline=BASELINE, alpha=ALPHA):
                      f"| {r.median_diff:+.4f} | {r.p_holm:.4f} | {r.delta:+.3f} ({r.magnitude}) "
                      f"| {r.verdict} |")
     return "\n".join(lines) + "\n"
+
+
+REPORT = ROOT / "results" / "comparacao.md"
+
+
+def summary_markdown(summ):
+    # sem tabulate: monta a tabela na mao
+    cols = [f"{METRIC_NAMES[m]} {s}" for m, s in summ.columns]
+    lines = ["| Modelo | " + " | ".join(cols) + " |", "|---" * (len(cols) + 1) + "|"]
+    for model, row in summ.iterrows():
+        vals = ["—" if pd.isna(v) else f"{v:.3f}" for v in row]
+        lines.append(f"| {model} | " + " | ".join(vals) + " |")
+    return "\n".join(lines)
+
+
+def save_outputs(comp, tests, metrics_dir=METRICS_DIR, report=REPORT):
+    """Salva as tabelas em results/metrics/ e o relatorio em results/comparacao.md."""
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    paths = []
+    order = model_order(comp)
+    long = comp.assign(model=pd.Categorical(comp["model"], order)).sort_values(KEYS)
+    path = metrics_dir / "comparacao_resultados.csv"
+    long.to_csv(path, index=False)
+    paths.append(path)
+    for metric in METRICS:
+        path = metrics_dir / f"comparacao_{metric}.csv"
+        metric_table(comp, metric).to_csv(path)
+        paths.append(path)
+    summ = summary_table(comp)
+    path = metrics_dir / "comparacao_resumo.csv"
+    summ.to_csv(path)
+    paths.append(path)
+    path = metrics_dir / "comparacao_testes.csv"
+    tests.to_csv(path, index=False)
+    paths.append(path)
+
+    paper = sorted(set(comp.loc[comp["source"] == "artigo", "model"]))
+    text = ["# Comparação final", "",
+            "Gerado por `python -m src.evaluation.compare`. Não edite à mão.", "",
+            "## Média dos 6 projetos", "", summary_markdown(summ), ""]
+    if paper:
+        text += [f"{', '.join(paper)}: só a AUC publicada no artigo (Tabela 8); "
+                 "as outras métricas dependem da #6.", ""]
+    text += [answer(tests),
+             "Pares = projeto × cenário, com a média das seeds de cada modelo. "
+             "O p-valor é do Wilcoxon pareado bicaudal, corrigido por Holm entre os modelos "
+             "de cada métrica. Magnitude do Cliff's delta pelos limiares de Romano et al. (2006).",
+             "", "Figuras em `results/figures/`.", ""]
+    report.write_text("\n".join(text), encoding="utf-8")
+    paths.append(report)
+    return paths
