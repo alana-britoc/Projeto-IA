@@ -22,6 +22,19 @@ def test_lr_jit_usa_as_14_features():
     assert params
 
 
+@pytest.mark.parametrize("name", ["random_forest", "hist_gradient_boosting"])
+def test_arvores_usam_as_14_features_e_tem_busca(name):
+    features, _, params = get_model(name)
+    assert features == FEATURES
+    assert params
+
+
+@pytest.mark.parametrize("name", ["random_forest", "hist_gradient_boosting"])
+def test_arvores_usam_a_seed(name):
+    _, model, _ = get_model(name, seed=3)
+    assert model.get_params()["random_state"] == 3
+
+
 @pytest.mark.parametrize("name", list(MODELS))
 def test_params_existem_no_modelo(name):
     # se errar o nome do parametro a busca so quebra la no meio do experimento
