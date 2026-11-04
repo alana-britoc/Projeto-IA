@@ -29,10 +29,36 @@ def test_arvores_usam_as_14_features_e_tem_busca(name):
     assert params
 
 
+@pytest.mark.parametrize("name", ["svm", "mlp"])
+def test_svm_e_mlp_usam_as_14_features_e_tem_busca(name):
+    features, _, params = get_model(name)
+    assert features == FEATURES
+    assert params
+
+
 @pytest.mark.parametrize("name", ["random_forest", "hist_gradient_boosting"])
 def test_arvores_usam_a_seed(name):
     _, model, _ = get_model(name, seed=3)
     assert model.get_params()["random_state"] == 3
+
+
+@pytest.mark.parametrize("name", ["svm", "mlp"])
+def test_svm_e_mlp_padronizam_as_features(name):
+    _, model, _ = get_model(name)
+    assert "standardscaler" in model.named_steps
+
+
+@pytest.mark.parametrize("name", ["svm", "mlp"])
+def test_svm_e_mlp_usam_a_seed(name):
+    _, model, _ = get_model(name, seed=3)
+    seeds = {v for k, v in model.get_params().items() if k.endswith("random_state")}
+    assert seeds == {3}
+
+
+def test_calibracao_do_svm_nao_abre_outro_pool():
+    # a busca ja roda em paralelo; um pool dentro do outro quebra no Windows (BrokenProcessPool)
+    _, model, _ = get_model("svm")
+    assert model.get_params()["calibratedclassifiercv__n_jobs"] == 1
 
 
 @pytest.mark.parametrize("name", list(MODELS))
