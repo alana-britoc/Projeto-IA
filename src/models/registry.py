@@ -1,6 +1,7 @@
 # modelos do experimento. pra add um novo e so colocar no MODELS
-from scipy.stats import loguniform
+from scipy.stats import loguniform, randint
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
@@ -13,6 +14,17 @@ from src.data.loader import FEATURES
 def _logistic(seed):
     return make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=7000, random_state=seed))
+
+
+# arvore nao precisa de padronizacao, entao fica sem pipeline
+def _random_forest(seed):
+    return RandomForestClassifier(random_state=seed, n_jobs=-1)
+
+
+def _hist_gradient_boosting(seed):
+    # early_stopping separa uma validacao aleatoria, e nao cronologica, dentro do treino.
+    # desligado pra o numero de iteracoes vir so da busca
+    return HistGradientBoostingClassifier(random_state=seed, early_stopping=False)
 
 
 def _svm(seed):
@@ -37,6 +49,19 @@ MODELS = {
     "lapredict": {"features": ["la"], "build": _logistic},
     "lr_jit": {"features": FEATURES, "build": _logistic,
                "params": {"logisticregression__C": loguniform(1e-3, 1e2)}},
+    "random_forest": {"features": FEATURES, "build": _random_forest,
+                      "params": {"n_estimators": randint(100, 501),
+                                 "max_depth": [None, 5, 10, 20],
+                                 "min_samples_leaf": randint(1, 21),
+                                 "max_features": ["sqrt", "log2", 0.5],
+                                 "class_weight": [None, "balanced", "balanced_subsample"]}},
+    "hist_gradient_boosting": {"features": FEATURES, "build": _hist_gradient_boosting,
+                               "params": {"learning_rate": loguniform(1e-2, 3e-1),
+                                          "max_iter": randint(100, 501),
+                                          "max_leaf_nodes": randint(15, 64),
+                                          "min_samples_leaf": randint(10, 101),
+                                          "l2_regularization": loguniform(1e-4, 10),
+                                          "class_weight": [None, "balanced"]}},
     "svm": {"features": FEATURES, "build": _svm,
             "params": {"calibratedclassifiercv__estimator__C": loguniform(1e-3, 1e2),
                        "calibratedclassifiercv__estimator__class_weight": [None, "balanced"]}},
