@@ -22,6 +22,26 @@ def test_lr_jit_usa_as_14_features():
     assert params
 
 
+@pytest.mark.parametrize("name", ["svm", "mlp"])
+def test_svm_e_mlp_usam_as_14_features_e_tem_busca(name):
+    features, _, params = get_model(name)
+    assert features == FEATURES
+    assert params
+
+
+@pytest.mark.parametrize("name", ["svm", "mlp"])
+def test_svm_e_mlp_padronizam_as_features(name):
+    _, model, _ = get_model(name)
+    assert "standardscaler" in model.named_steps
+
+
+@pytest.mark.parametrize("name", ["svm", "mlp"])
+def test_svm_e_mlp_usam_a_seed(name):
+    _, model, _ = get_model(name, seed=3)
+    seeds = {v for k, v in model.get_params().items() if k.endswith("random_state")}
+    assert seeds == {3}
+
+
 @pytest.mark.parametrize("name", list(MODELS))
 def test_params_existem_no_modelo(name):
     # se errar o nome do parametro a busca so quebra la no meio do experimento
