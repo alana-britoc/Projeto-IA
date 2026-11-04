@@ -18,10 +18,11 @@ def _logistic(seed):
 def _svm(seed):
     # SVC com kernel e probability=True fica inviavel no CP (~75 mil commits).
     # LinearSVC nao tem predict_proba, entao a calibracao (sigmoid) gera a probabilidade.
-    # o cv=3 da calibracao e estratificado sem embaralhar, so dentro do treino
+    # o cv=3 da calibracao e estratificado sem embaralhar, so dentro do treino.
+    # n_jobs=1 pq a busca ja roda em paralelo, e um pool dentro do outro quebra no Windows
     return make_pipeline(StandardScaler(),
                          CalibratedClassifierCV(LinearSVC(max_iter=5000, random_state=seed),
-                                                method="sigmoid", cv=3))
+                                                method="sigmoid", cv=3, n_jobs=1))
 
 
 def _mlp(seed):

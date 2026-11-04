@@ -42,6 +42,12 @@ def test_svm_e_mlp_usam_a_seed(name):
     assert seeds == {3}
 
 
+def test_calibracao_do_svm_nao_abre_outro_pool():
+    # a busca ja roda em paralelo; um pool dentro do outro quebra no Windows (BrokenProcessPool)
+    _, model, _ = get_model("svm")
+    assert model.get_params()["calibratedclassifiercv__n_jobs"] == 1
+
+
 @pytest.mark.parametrize("name", list(MODELS))
 def test_params_existem_no_modelo(name):
     # se errar o nome do parametro a busca so quebra la no meio do experimento
