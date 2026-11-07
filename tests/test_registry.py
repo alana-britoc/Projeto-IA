@@ -61,6 +61,26 @@ def test_calibracao_do_svm_nao_abre_outro_pool():
     assert model.get_params()["calibratedclassifiercv__n_jobs"] == 1
 
 
+@pytest.mark.parametrize("name", ["lightgbm", "xgboost"])
+def test_boosting_usa_as_14_features_e_tem_busca(name):
+    features, _, params = get_model(name)
+    assert features == FEATURES
+    assert params
+
+
+@pytest.mark.parametrize("name", ["lightgbm", "xgboost"])
+def test_boosting_usa_a_seed(name):
+    _, model, _ = get_model(name, seed=3)
+    assert model.get_params()["random_state"] == 3
+
+
+@pytest.mark.parametrize("name", ["lightgbm", "xgboost"])
+def test_boosting_nao_abre_threads_dentro_da_busca(name):
+    # a busca ja roda em paralelo; threads dentro de cada processo disputam a CPU (ver o SVM)
+    _, model, _ = get_model(name)
+    assert model.get_params()["n_jobs"] == 1
+
+
 def test_mlp_tem_iteracoes_pro_pior_caso_da_busca():
     # com max_iter=200, 58% dos ajustes da grade da #5 pararam sem convergir (#27).
     # o pior caso medido na busca precisou de 973 iteracoes
