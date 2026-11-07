@@ -9,9 +9,9 @@ from src.evaluation.metrics import METRIC_NAMES  # noqa: E402
 
 FIGURES_DIR = ROOT / "results" / "figures"
 
-# paleta categorica em ordem fixa: a cor segue o modelo, nao a posicao no ranking
-PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948",
-           "#8a6d3b"]
+# paleta categorica validada (8 cores, checada para daltonismo). Nao da pra gerar uma 9a cor
+# que continue distinguivel, entao modelo novo precisa de cor em MODEL_COLORS
+PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
 SURFACE = "#fcfcfb"
 INK = "#0b0b0b"
 INK_2 = "#52514e"
@@ -19,11 +19,28 @@ MUTED = "#898781"
 GRID = "#e1e0d9"
 AXIS = "#c3c2b7"
 
+# cor fixa por modelo (#26): a cor segue o modelo, e nao a posicao no ranking, entao um modelo
+# que sobe de posicao nao repinta os outros. Os 8 modelos do grupo usam as 8 cores da paleta
+MODEL_COLORS = {"lapredict": PALETTE[0], "random_forest": PALETTE[1],
+                "hist_gradient_boosting": PALETTE[2], "mlp": PALETTE[3], "lightgbm": PALETTE[4],
+                "xgboost": PALETTE[5], "svm": PALETTE[6], "lr_jit": PALETTE[7]}
+# os modelos de deep learning do artigo sao referencia: ficam em cinza, e como cinza nao
+# separa bem tres series, cada um tem tambem uma forma (painel) ou hachura (barras)
+REFERENCE_COLORS = {"deepjit": "#52514e", "cc2vec": "#807f78", "dbn_jit": "#aeada4"}
+REFERENCE_MARKERS = {"deepjit": "triangle-up", "cc2vec": "square", "dbn_jit": "diamond"}
+REFERENCE_HATCH = "///"
+
 
 def model_colors(models):
-    if len(models) > len(PALETTE):
-        raise ValueError(f"no maximo {len(PALETTE)} modelos por grafico")
-    return dict(zip(models, PALETTE))
+    """Cor de cada modelo. Modelo desconhecido (ex.: nos testes) pega uma cor livre da paleta."""
+    fixed = {**MODEL_COLORS, **REFERENCE_COLORS}
+    colors = {m: fixed[m] for m in models if m in fixed}
+    free = [c for c in PALETTE if c not in colors.values()]
+    unknown = [m for m in models if m not in fixed]
+    if len(unknown) > len(free):
+        raise ValueError(f"sem cor livre para {unknown}: adicione o modelo em MODEL_COLORS")
+    colors.update(zip(unknown, free))
+    return {m: colors[m] for m in models}
 
 
 def _style(ax):
@@ -97,6 +114,7 @@ def plot_auc_by_project(comp, order, path=None):
             xs = [x - 0.4 + width * (i + 0.5) for x in range(len(PROJECTS))]
             # gap de superficie entre barras vizinhas
             ax.bar(xs, vals, width=width, color=colors[model], edgecolor=SURFACE, linewidth=1,
+                   hatch=REFERENCE_HATCH if model in REFERENCE_COLORS else None,
                    label=model if setting == "WP" else None)
         ax.set_xticks(range(len(PROJECTS)), PROJECTS)
         ax.set_ylim(0.5, None)
