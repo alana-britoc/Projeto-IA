@@ -1,171 +1,190 @@
-# Projeto de Inteligência Artificial — Nome Provisório
+# Predição de Defeitos Just-in-Time com Machine Learning
 
-Template educacional para o desenvolvimento de um projeto acadêmico de Machine Learning na disciplina de Inteligência Artificial. Este repositório fornece apenas uma organização inicial: a definição do problema, a análise dos dados, os modelos e os experimentos deverão ser desenvolvidos pela equipe.
+Projeto da disciplina de Inteligência Artificial. A equipe replica e estende o artigo *Deep Just-in-Time Defect Prediction: How Far Are We?* (Zeng et al., ISSTA 2021).
 
 ## Equipe
 
-**Nome da equipe:** _preencher_
+**Nome da equipe:** Commit Limpo
 
-| Integrante | Conta no GitHub | Responsabilidade inicial |
+| Integrante | Conta no GitHub | Responsabilidade |
 | --- | --- | --- |
-| Nome completo | `@usuario` | A definir |
-| Nome completo | `@usuario` | A definir |
-| Nome completo | `@usuario` | A definir |
+| Alana de Brito Cavalcanti | `@alana-britoc` | Carregamento dos dados, reprodução do LApredict e do LR-JIT, script de experimentos e README |
+| João Araújo | `@joaogabrielarj` | Random Forest, HistGradientBoosting, SVM e MLP |
+| Luiz Tenório | `@luiztcn78` | Métricas do DeepJIT e do CC2Vec a partir dos resultados dos autores |
+| Ocimar Schroeder Junior | `@OcimarSchroederJR` | Comparação final: tabelas, gráficos e testes estatísticos |
 
 ## Descrição geral
 
-Preencha esta seção com uma visão geral do projeto, incluindo o problema estudado, sua relevância, os objetivos e, quando definido, o conjunto de dados que será utilizado. Não inclua aqui resultados que ainda não tenham sido obtidos ou avaliados pela equipe.
+Predição de defeitos *just-in-time* (JIT) tenta prever, no momento do commit, se ele vai introduzir um defeito. Com isso a revisão de código pode priorizar os commits mais arriscados enquanto a mudança ainda está fresca para quem a fez.
+
+O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos simples. A conclusão foi que o LApredict, uma regressão logística que usa só o número de linhas adicionadas (`la`), fica no mesmo nível ou acima dos modelos profundos.
+
+**Objetivo:** reproduzir os baselines do artigo e testar se outros modelos clássicos de Machine Learning superam o LApredict nas mesmas condições. Os modelos testados são Random Forest, HistGradientBoosting, SVM e MLP, todos com as 14 features de Kamei.
+
+**Dados:** commits de seis projetos open source (qt, openstack, jdt, platform, gerrit e go), disponibilizados pelos autores do artigo. Cada commit tem 14 features de Kamei e um rótulo indicando se introduziu defeito. A origem e o formato estão em [`data/README.md`](data/README.md).
+
+**Cenários avaliados:**
+
+- **WP (within-project):** treino nos primeiros 80% dos commits do projeto, em ordem cronológica, e teste nos 20% finais
+- **CP (cross-project):** treino nos outros cinco projetos e teste nos mesmos 20% finais
+
+**Métricas:** AUC, PR-AUC, F1 e MCC. O limiar de decisão do F1 e do MCC é escolhido nos 20% finais do treino, nunca no teste.
 
 ## Estrutura do repositório
 
 ```text
 .
-├── .github/
-│   ├── ISSUE_TEMPLATE/
-│   │   └── task.md
-│   └── pull_request_template.md
 ├── data/
-│   ├── raw/
-│   │   └── .gitkeep
+│   ├── raw/                  # datasets dos autores (não versionados)
 │   ├── processed/
-│   │   └── .gitkeep
+│   ├── reference/            # Tabela 8 do artigo, para comparação
 │   └── README.md
-├── notebooks/
-│   └── .gitkeep
 ├── src/
-│   ├── data/
-│   │   └── __init__.py
-│   ├── preprocessing/
-│   │   └── __init__.py
-│   ├── models/
-│   │   └── __init__.py
-│   ├── evaluation/
-│   │   └── __init__.py
-│   ├── utils/
-│   │   └── __init__.py
-│   └── __init__.py
+│   ├── data/loader.py        # leitura dos CSVs e divisão WP/CP
+│   ├── preprocessing/        # padronização das features
+│   ├── models/registry.py    # modelos e espaços de busca de hiperparâmetros
+│   └── evaluation/
+│       ├── metrics.py        # AUC, PR-AUC, F1, MCC e escolha do limiar
+│       ├── reproduce.py      # reprodução do LApredict e do LR-JIT
+│       ├── run_experiment.py # grade modelo x projeto x cenário x seed
+│       ├── deep_baselines.py # métricas do DeepJIT e do CC2Vec
+│       ├── compare.py        # comparação final contra o LApredict
+│       ├── stats.py          # Wilcoxon, Holm e Cliff's delta
+│       └── plots.py          # gráficos da comparação
 ├── tests/
-│   ├── .gitkeep
-│   └── __init__.py
+├── notebooks/
 ├── results/
-│   ├── figures/
-│   │   └── .gitkeep
-│   └── metrics/
-│       └── .gitkeep
-├── .gitignore
-├── README.md
+│   ├── comparacao.md         # relatório da comparação final
+│   ├── figures/              # gráficos da comparação
+│   └── metrics/              # CSVs gerados pelos scripts
 └── requirements.txt
 ```
 
-### Finalidade dos diretórios
-
-- `data/raw/`: datasets originais, sem alterações. Os arquivos de dados não devem ser versionados por padrão.
-- `data/processed/`: dados gerados por limpeza, transformação ou preparação. Esses arquivos também não devem ser versionados por padrão.
-- `notebooks/`: análises exploratórias, experimentos e registros de investigação em Jupyter.
-- `src/data/`: código reutilizável de carregamento e manipulação inicial dos dados.
-- `src/preprocessing/`: código reutilizável de pré-processamento.
-- `src/models/`: código de modelos e treinamento a ser desenvolvido pelos alunos.
-- `src/evaluation/`: código de avaliação e métricas a ser desenvolvido pelos alunos.
-- `src/utils/`: funções auxiliares compartilhadas pelo projeto.
-- `tests/`: testes automatizados do código produzido pela equipe.
-- `results/figures/`: figuras e gráficos gerados pelos experimentos.
-- `results/metrics/`: resultados de métricas gerados pelos experimentos.
-- `.github/`: modelos para Issues e Pull Requests.
-
-Os notebooks devem apoiar a exploração e a comunicação dos experimentos. Coloque código reutilizável em `src/` para evitar concentrar toda a implementação nos notebooks.
-
 ## Configuração do ambiente
 
-É recomendado utilizar Python 3.10 ou uma versão mais recente compatível com as dependências do projeto.
-
-1. Clone o repositório e acesse sua pasta:
-
-   ```bash
-   git clone <URL_DO_REPOSITORIO>
-   cd <NOME_DO_REPOSITORIO>
-   ```
-
-2. Crie um ambiente virtual:
-
-   ```bash
-   python -m venv .venv
-   ```
-
-3. Ative o ambiente virtual:
-
-   No Linux ou macOS:
-
-   ```bash
-   source .venv/bin/activate
-   ```
-
-   No Windows (PowerShell):
-
-   ```powershell
-   .venv\Scripts\Activate.ps1
-   ```
-
-4. Instale as dependências:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Organização dos dados
-
-Armazene os datasets originais em `data/raw/` e preserve-os sem modificações. Salve em `data/processed/` apenas os dados resultantes de limpeza, transformação ou preparação.
-
-Datasets e artefatos gerados podem ser grandes ou conter informações que não devem ser publicadas. Por isso, o `.gitignore` impede o versionamento desses arquivos por padrão. Os arquivos `.gitkeep` mantêm a estrutura das pastas no Git. Se a equipe precisar compartilhar dados, deve combinar um meio apropriado e documentar como obtê-los em `data/README.md`.
-
-## Fluxo de desenvolvimento
-
-O fluxo esperado é:
-
-```text
-Issue → Branch → Commits → Pull Request → Code Review → Approval → Merge
-```
-
-Regras do projeto:
-
-1. Toda alteração de código deve estar associada a uma Issue.
-2. Cada atividade deve ser desenvolvida em uma branch própria.
-3. Não devem ser realizados commits diretamente na `main`.
-4. Toda alteração deve entrar na `main` por meio de Pull Request.
-5. O Pull Request deve estar associado à Issue correspondente. Quando o merge concluir a atividade, use `Closes #numero_da_issue` na descrição do PR.
-6. O autor do Pull Request não pode aprovar o próprio PR.
-7. Todo PR precisa de pelo menos uma aprovação de outro integrante da equipe antes do merge.
-8. Cada integrante deve utilizar sua própria conta GitHub e realizar seus próprios commits.
-9. O histórico do GitHub será utilizado para acompanhar a participação individual dos integrantes.
-
-### Exemplo de início de uma atividade
-
-Depois de criar ou escolher uma Issue, atualize a `main` local e crie uma branch com um nome descritivo:
+Use Python 3.10 ou mais recente.
 
 ```bash
-git switch main
-git pull
-git switch -c issue-12-descricao-curta
+git clone https://github.com/alana-britoc/Projeto-IA.git
+cd Projeto-IA
+python -m venv .venv
 ```
 
-Faça commits pequenos e claros. Ao concluir a atividade, envie a branch e abra um Pull Request utilizando o modelo do repositório.
+Ative o ambiente virtual:
 
-## Comparação final
+```bash
+# Linux ou macOS
+source .venv/bin/activate
+```
 
-Depois de rodar os experimentos (`python -m src.evaluation.run_experiment`), gere a comparação com o LApredict:
+```powershell
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+```
+
+Instale as dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+Depois baixe os dados seguindo [`data/README.md`](data/README.md). Os seis projetos devem ficar em `data/raw/`.
+
+## Como rodar
+
+Todos os comandos são executados a partir da raiz do repositório.
+
+**Reproduzir os baselines do artigo** (LApredict e LR-JIT), comparando com a Tabela 8:
+
+```bash
+python -m src.evaluation.reproduce
+```
+
+O resultado é salvo em `results/metrics/reproducao.csv`.
+
+**Rodar os experimentos.** Sem argumentos, o script roda todos os modelos, projetos e cenários com a seed 0:
+
+```bash
+python -m src.evaluation.run_experiment
+```
+
+Também é possível rodar só uma parte da grade:
+
+```bash
+python -m src.evaluation.run_experiment --models random_forest svm --projects qt go --settings WP --seeds 0 1 2 3 4
+```
+
+| Opção | Valores |
+| --- | --- |
+| `--models` | `lapredict`, `lr_jit`, `random_forest`, `hist_gradient_boosting`, `svm`, `mlp` |
+| `--projects` | `qt`, `openstack`, `jdt`, `platform`, `gerrit`, `go` |
+| `--settings` | `WP`, `CP` |
+| `--seeds` | uma ou mais seeds inteiras |
+| `--n-iter` | combinações testadas na busca de hiperparâmetros (padrão 20, 0 desliga) |
+
+Cada modelo é salvo em `results/metrics/experimentos_<modelo>.csv`. Rodar de novo a mesma combinação substitui só aquela linha. Os CSVs versionados foram gerados com as seeds 0 a 4.
+
+**Calcular as métricas do DeepJIT e do CC2Vec** a partir das predições publicadas pelos autores. É preciso clonar o [repositório dos autores](https://github.com/ZZR0/ISSTA21-JIT-DP) ao lado deste projeto:
+
+```bash
+python -m src.evaluation.deep_baselines ../ISSTA21-JIT-DP/ResultAnalysis/RQ4-T8
+```
+
+O resultado é salvo em `results/metrics/deep_baselines.csv`.
+
+**Gerar a comparação final** contra o LApredict:
 
 ```bash
 python -m src.evaluation.compare
 ```
 
-O script lê todos os `results/metrics/experimentos_*.csv`, junta com o DeepJIT e o CC2Vec (`results/metrics/deep_baselines.csv`, gerado pelo `deep_baselines`) e com a AUC publicada do DBN-JIT, e gera:
+O script lê todos os `results/metrics/experimentos_*.csv` e o `deep_baselines.csv`, e usa a AUC publicada no artigo para o DBN-JIT. A média das seeds de cada modelo é comparada com o LApredict pelo teste de Wilcoxon pareado, com correção de Holm, e pelo Cliff's delta. Cada par é um projeto × cenário. O script gera:
 
-- `results/metrics/comparacao_<metrica>.csv`: AUC, PR-AUC, F1 e MCC por modelo, projeto e cenário;
-- `results/metrics/comparacao_testes.csv`: Wilcoxon pareado (com Holm) e Cliff's delta contra o LApredict;
-- `results/figures/*.png`: gráficos comparativos;
-- `results/comparacao.md`: resumo e resposta à pergunta "algum modelo supera o LApredict?".
+- `results/metrics/comparacao_<metrica>.csv`: AUC, PR-AUC, F1 e MCC por modelo, projeto e cenário
+- `results/metrics/comparacao_testes.csv`: resultado dos testes estatísticos
+- `results/figures/*.png`: gráficos comparativos
+- `results/comparacao.md`: relatório com a resposta à pergunta "algum modelo supera o LApredict?"
 
-Modelo novo entra sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo.
+Um modelo novo entra na comparação sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo.
 
-## Observação
+**Testes:**
 
-Este template não contém uma solução de Machine Learning. A escolha das técnicas, a implementação, os testes, os experimentos e a análise dos resultados são responsabilidades dos alunos.
+```bash
+python -m pytest
+```
+
+## Resultados
+
+| Modelo | AUC WP | AUC CP |
+| --- | --- | --- |
+| Random Forest | 0,758 | 0,737 |
+| HistGradientBoosting | 0,754 | 0,738 |
+| MLP | 0,738 | 0,709 |
+| **LApredict** | **0,725** | **0,725** |
+| DeepJIT | 0,706 | 0,670 |
+| CC2Vec | 0,706 | 0,675 |
+| SVM | 0,693 | 0,669 |
+| LR-JIT | 0,689 | 0,667 |
+| DBN-JIT | 0,671 | 0,663 |
+
+Média dos 6 projetos. A reprodução do LApredict chegou à mesma AUC média publicada no artigo (0,725).
+
+O Random Forest e o HistGradientBoosting superam o LApredict com diferença significativa: o HistGradientBoosting nas quatro métricas, e o Random Forest em AUC, F1 e MCC. O ganho é pequeno, de 0,02 a 0,03 de AUC. O MLP empata com o LApredict, e os demais modelos perdem em AUC, o que confirma a conclusão do artigo sobre os modelos de deep learning.
+
+As tabelas completas, os testes estatísticos e as limitações estão em [`results/comparacao.md`](results/comparacao.md).
+
+## Fluxo de desenvolvimento
+
+```text
+Issue → Branch → Commits → Pull Request → Code Review → Approval → Merge
+```
+
+1. Toda alteração de código deve estar associada a uma Issue.
+2. Cada atividade é desenvolvida em uma branch própria, sem commits diretos na `main`.
+3. Toda alteração entra na `main` por Pull Request, com `Closes #numero_da_issue` na descrição quando concluir a atividade.
+4. Todo PR precisa de pelo menos uma aprovação de outro integrante antes do merge. O autor não aprova o próprio PR.
+5. Cada integrante usa sua própria conta do GitHub e faz seus próprios commits.
+
+## Referência
+
+Zhengran Zeng, Yuqun Zhang, Haotian Zhang e Lingming Zhang. *Deep Just-in-Time Defect Prediction: How Far Are We?* ISSTA 2021. https://dl.acm.org/doi/10.1145/3460319.3464819
