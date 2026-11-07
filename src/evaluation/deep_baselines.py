@@ -20,7 +20,6 @@ DEFAULT_BASE = "../ISSTA21-JIT-DP/ResultAnalysis/RQ4-T8"
 OUT = Path("results/metrics/deep_baselines.csv")
 MODELS = ["deepjit", "cc2vec"]
 
-
 def load_results(base):
     rows = []
     for model in MODELS:
@@ -40,6 +39,8 @@ def load_results(base):
 
 def main():
     base = Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE)
+    if not base.exists():
+        sys.exit(f"Pasta não encontrada: {base}. Clone ISSTA21-JIT-DP e passe o caminho de RQ4-T8.")
     df = load_results(base)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUT, index=False)
