@@ -56,6 +56,7 @@ O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos s
 │       ├── run_experiment.py # grade modelo x projeto x cenário x seed
 │       ├── deep_baselines.py # métricas do DeepJIT e do CC2Vec
 │       ├── compare.py        # comparação final contra o LApredict
+│       ├── feature_importance.py # importância das features nos modelos de árvore
 │       ├── stats.py          # Wilcoxon, Holm e Cliff's delta
 │       └── plots.py          # gráficos da comparação
 ├── models/
@@ -155,6 +156,14 @@ O script lê todos os `results/metrics/experimentos_*.csv` e o `deep_baselines.c
 - `results/comparacao.md`: relatório com a resposta à pergunta "algum modelo supera o LApredict?"
 
 Um modelo novo entra na comparação sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo.
+
+**Medir a importância das features** no Random Forest e no HistGradientBoosting (precisa do dataset):
+
+```bash
+python -m src.evaluation.feature_importance
+```
+
+Os dois modelos são treinados com os hiperparâmetros da busca (seed 0), e a importância é a queda da AUC no teste quando cada feature é embaralhada. O script também compara o HistGradientBoosting com uma versão que não pode combinar features, para medir quanto as interações ajudam. Gera `results/metrics/importancia_features.csv`, `results/metrics/importancia_interacoes.csv` e `results/figures/importancia_features.png`.
 
 **Abrir o painel** no navegador:
 
