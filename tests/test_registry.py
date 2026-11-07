@@ -61,6 +61,14 @@ def test_calibracao_do_svm_nao_abre_outro_pool():
     assert model.get_params()["calibratedclassifiercv__n_jobs"] == 1
 
 
+def test_mlp_tem_iteracoes_pro_pior_caso_da_busca():
+    # com max_iter=200, 58% dos ajustes da grade da #5 pararam sem convergir (#27).
+    # o pior caso medido na busca precisou de 973 iteracoes
+    _, model, _ = get_model("mlp")
+    assert model.get_params()["mlpclassifier__max_iter"] >= 2000
+    assert model.get_params()["mlpclassifier__early_stopping"] is False
+
+
 @pytest.mark.parametrize("name", list(MODELS))
 def test_params_existem_no_modelo(name):
     # se errar o nome do parametro a busca so quebra la no meio do experimento
