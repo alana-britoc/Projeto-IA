@@ -40,11 +40,16 @@ O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos s
 │   ├── reference/            # Tabela 8 do artigo, para comparação
 │   └── README.md
 ├── src/
-│   ├── app.py                # painel de resultados (Streamlit)
-│   ├── dashboard.py          # dados e gráficos do painel
+│   ├── app.py                # painel (Streamlit), com as duas páginas abaixo
+│   ├── resultados.py         # página de resultados
+│   ├── dashboard.py          # dados e gráficos da página de resultados
+│   ├── simulador.py          # página do simulador de commit
 │   ├── data/loader.py        # leitura dos CSVs e divisão WP/CP
 │   ├── preprocessing/        # padronização das features
-│   ├── models/registry.py    # modelos e espaços de busca de hiperparâmetros
+│   ├── models/
+│   │   ├── registry.py        # modelos e espaços de busca de hiperparâmetros
+│   │   ├── train_simulator.py # treina o modelo do simulador
+│   │   └── simulator.py       # carrega o modelo e calcula a probabilidade
 │   └── evaluation/
 │       ├── metrics.py        # AUC, PR-AUC, F1, MCC e escolha do limiar
 │       ├── reproduce.py      # reprodução do LApredict e do LR-JIT
@@ -53,6 +58,8 @@ O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos s
 │       ├── compare.py        # comparação final contra o LApredict
 │       ├── stats.py          # Wilcoxon, Holm e Cliff's delta
 │       └── plots.py          # gráficos da comparação
+├── models/
+│   └── simulador.joblib      # Random Forest do simulador (versionado)
 ├── tests/
 ├── notebooks/
 ├── results/
@@ -149,13 +156,15 @@ O script lê todos os `results/metrics/experimentos_*.csv` e o `deep_baselines.c
 
 Um modelo novo entra na comparação sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo.
 
-**Abrir o painel de resultados** no navegador:
+**Abrir o painel** no navegador:
 
 ```bash
 streamlit run src/app.py
 ```
 
-O painel abre em http://localhost:8501. Ele lê os CSVs versionados em `results/metrics/` e usa as mesmas funções do `compare.py`, então mostra os mesmos números de `results/comparacao.md` e não precisa do dataset. Na barra lateral dá para escolher a métrica e filtrar por modelo, projeto e cenário. A página mostra:
+O painel abre em http://localhost:8501 e tem duas páginas, **Resultados** e **Simulador de commit**, escolhidas no menu lateral. Nenhuma das duas precisa do dataset.
+
+A página de resultados lê os CSVs versionados em `results/metrics/` e usa as mesmas funções do `compare.py`, então mostra os mesmos números de `results/comparacao.md`. Na barra lateral dá para escolher a métrica e filtrar por modelo, projeto e cenário. A página mostra:
 
 - a resposta à pergunta "algum modelo supera o LApredict?";
 - a média da métrica por modelo e o valor em cada projeto e cenário, em gráficos interativos;
@@ -163,6 +172,14 @@ O painel abre em http://localhost:8501. Ele lê os CSVs versionados em `results/
 - a tabela completa dos resultados.
 
 Os testes estatísticos usam sempre os 12 pares projeto × cenário. Os filtros mudam os gráficos e as tabelas, mas não os testes.
+
+No simulador, a pessoa preenche as 14 métricas de Kamei de um commit e vê a probabilidade de ele introduzir defeito, além de quanto ele é mais arriscado que os commits do treino. Os campos começam com a mediana dos commits do treino. É uma demonstração: o modelo só vale para commits parecidos com os dos 6 projetos.
+
+O modelo do simulador é um Random Forest treinado com os 94.918 commits dos 6 projetos e salvo em `models/simulador.joblib`. Ele usa os hiperparâmetros que a busca escolheu mais vezes nos experimentos, com 100 árvores e profundidade máxima 12 para o arquivo ficar abaixo de 10 MB. Para treinar de novo, por exemplo depois de atualizar o scikit-learn, é preciso ter o dataset em `data/raw/`:
+
+```bash
+python -m src.models.train_simulator
+```
 
 **Testes:**
 
