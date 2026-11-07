@@ -25,3 +25,12 @@ def test_auc_bate_com_tabela_8():
                         how="outer", indicator=True)
     assert (merged["_merge"] == "both").all()
     assert (merged["auc"] - merged["auc_ref"]).abs().max() < 1e-3
+
+@pytest.mark.skipif(not OUT.exists(), reason="rode deep_baselines antes")
+def test_csv_tem_formato_esperado():
+    df = pd.read_csv(OUT)
+    assert list(df.columns) == ["model", "project", "setting", "auc", "pr_auc"]
+    assert len(df) == 24
+    assert set(df["model"]) == {"deepjit", "cc2vec"}
+    assert set(df["setting"]) == {"WP", "CP"}
+    assert df[["auc", "pr_auc"]].notna().all().all()
