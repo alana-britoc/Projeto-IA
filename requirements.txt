@@ -2,6 +2,7 @@ numpy
 pandas
 scipy
 scikit-learn
+streamlit
 matplotlib
 jupyter
 pytest
