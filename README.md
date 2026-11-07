@@ -157,7 +157,7 @@ Depois de rodar os experimentos (`python -m src.evaluation.run_experiment`), ger
 python -m src.evaluation.compare
 ```
 
-O script lê todos os `results/metrics/experimentos_*.csv`, junta com a AUC publicada no artigo (DeepJIT, CC2Vec e DBN-JIT) e gera:
+O script lê todos os `results/metrics/experimentos_*.csv`, junta com o DeepJIT e o CC2Vec (`results/metrics/deep_baselines.csv`, gerado pelo `deep_baselines`) e com a AUC publicada do DBN-JIT, e gera:
 
 - `results/metrics/comparacao_<metrica>.csv`: AUC, PR-AUC, F1 e MCC por modelo, projeto e cenário;
 - `results/metrics/comparacao_testes.csv`: Wilcoxon pareado (com Holm) e Cliff's delta contra o LApredict;
