@@ -40,6 +40,8 @@ O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos s
 │   ├── reference/            # Tabela 8 do artigo, para comparação
 │   └── README.md
 ├── src/
+│   ├── app.py                # painel de resultados (Streamlit)
+│   ├── dashboard.py          # dados e gráficos do painel
 │   ├── data/loader.py        # leitura dos CSVs e divisão WP/CP
 │   ├── preprocessing/        # padronização das features
 │   ├── models/registry.py    # modelos e espaços de busca de hiperparâmetros
@@ -146,6 +148,21 @@ O script lê todos os `results/metrics/experimentos_*.csv` e o `deep_baselines.c
 - `results/comparacao.md`: relatório com a resposta à pergunta "algum modelo supera o LApredict?"
 
 Um modelo novo entra na comparação sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo.
+
+**Abrir o painel de resultados** no navegador:
+
+```bash
+streamlit run src/app.py
+```
+
+O painel abre em http://localhost:8501. Ele lê os CSVs versionados em `results/metrics/` e usa as mesmas funções do `compare.py`, então mostra os mesmos números de `results/comparacao.md` e não precisa do dataset. Na barra lateral dá para escolher a métrica e filtrar por modelo, projeto e cenário. A página mostra:
+
+- a resposta à pergunta "algum modelo supera o LApredict?";
+- a média da métrica por modelo e o valor em cada projeto e cenário, em gráficos interativos;
+- os testes de Wilcoxon e o Cliff's delta contra o LApredict;
+- a tabela completa dos resultados.
+
+Os testes estatísticos usam sempre os 12 pares projeto × cenário. Os filtros mudam os gráficos e as tabelas, mas não os testes.
 
 **Testes:**
 
