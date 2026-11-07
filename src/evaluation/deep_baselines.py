@@ -1,3 +1,15 @@
+"""Calcula AUC e PR-AUC do DeepJIT e do CC2Vec a partir das predições dos autores.
+
+As predições vêm de ResultAnalysis/RQ4-T8/{deepjit,cc2vec}/<projeto>_<WP|CP>.result
+(repositório ZZR0/ISSTA21-JIT-DP). Cada arquivo tem duas colunas separadas por tab:
+rótulo real e probabilidade prevista.
+
+Uso (da raiz do projeto):
+    python -m src.evaluation.deep_baselines <caminho/para/RQ4-T8>
+
+Saída: results/metrics/deep_baselines.csv (model, project, setting, auc, pr_auc).
+"""
+
 import sys
 from pathlib import Path
 
