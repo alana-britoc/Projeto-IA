@@ -16,7 +16,8 @@ from src.evaluation.reproduce import REFERENCE, load_reference
 from src.evaluation.stats import holm, paired_test
 
 METRICS_DIR = ROOT / "results" / "metrics"
-METRICS = ["auc", "pr_auc", "f1", "mcc"]
+DEEP = METRICS_DIR / "deep_baselines.csv"
+METRICS =["auc", "pr_auc", "f1", "mcc"]
 KEYS = ["model", "project", "setting"]
 BASELINE = "lapredict"
 ALPHA = 0.05
@@ -39,8 +40,17 @@ def aggregate(results):
     return agg
 
 
+def deep_results(path=DEEP):
+    # so AUC e PR-AUC, sem validacao nao tem como escolher o limiar
+    if not path.exists():
+        return pd.DataFrame(columns=KEYS + METRICS + ["source"])
+    df = pd.read_csv(path).reindex(columns=KEYS + METRICS)
+    df["source"] = "autores"
+    return df
+
+
 def paper_results(skip=(), path=REFERENCE):
-    # o artigo so publica AUC, o resto fica NaN ate a #6 calcular das predicoes dos autores
+    # o artigo so publica AUC
     ref = load_reference(path)
     rows = []
     for paper_name, model in PAPER_MODELS.items():
@@ -56,11 +66,14 @@ def paper_results(skip=(), path=REFERENCE):
     return df
 
 
-def build_comparison(results, path=REFERENCE):
+def build_comparison(results, path=REFERENCE, deep_path=DEEP):
     ours = aggregate(results)
-    # se alguem rodar o modelo de verdade (ex: #6), o nosso substitui o do artigo
-    paper = paper_results(skip=set(ours["model"]), path=path)
-    return pd.concat([ours, paper], ignore_index=True)
+    # nosso > predicoes dos autores > tabela do artigo
+    deep = deep_results(deep_path)
+    deep = deep[~deep["model"].isin(ours["model"])]
+    paper = paper_results(skip=set(ours["model"]) | set(deep["model"]), path=path)
+    parts = [df for df in (ours, deep, paper) if not df.empty]
+    return pd.concat(parts, ignore_index=True)
 
 
 def model_order(comp, baseline="lapredict"):
@@ -187,16 +200,24 @@ def save_outputs(comp, tests, metrics_dir=METRICS_DIR, report=REPORT):
     paths.append(path)
 
     paper = sorted(set(comp.loc[comp["source"] == "artigo", "model"]))
+    deep = sorted(set(comp.loc[comp["source"] == "autores", "model"]))
     text = ["# Comparação final", "",
             "Gerado por `python -m src.evaluation.compare`. Não edite à mão.", "",
             "## Média dos 6 projetos", "", summary_markdown(summ), ""]
+    if deep:
+        text += [f"{', '.join(deep)}: AUC e PR-AUC calculados a partir das predições publicadas "
+                 "pelos autores. F1 e MCC ficam de fora porque não há dados de validação "
+                 "para escolher o limiar.", ""]
     if paper:
-        text += [f"{', '.join(paper)}: só a AUC publicada no artigo (Tabela 8); "
-                 "as outras métricas dependem da #6.", ""]
+        text += [f"{', '.join(paper)}: só a AUC publicada no artigo (Tabela 8).", ""]
     text += [answer(tests),
              "Pares = projeto × cenário, com a média das seeds de cada modelo. "
              "O p-valor é do Wilcoxon pareado bicaudal, corrigido por Holm entre os modelos "
              "de cada métrica. Magnitude do Cliff's delta pelos limiares de Romano et al. (2006).",
+             "",
+             "**Limitação do CP:** o treino usa os outros cinco projetos inteiros, então parte "
+             "dos commits de treino é mais recente que o período de teste. O artigo faz assim "
+             "e mantivemos para comparar nas mesmas condições.",
              "", "Figuras em `results/figures/`.", ""]
     report.write_text("\n".join(text), encoding="utf-8")
     paths.append(report)

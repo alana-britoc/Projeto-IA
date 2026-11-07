@@ -3,8 +3,9 @@ import pytest
 
 from src.data.loader import PROJECTS
 from src.evaluation.compare import (aggregate, all_tests, answer, build_comparison,
-                                    compare_to_baseline, load_results, metric_table,
-                                    paper_results, save_outputs, summary_table, verdict)
+                                    compare_to_baseline, deep_results, load_results,
+                                    metric_table, paper_results, save_outputs, summary_table,
+                                    verdict)
 
 
 def _rows(model, auc_by_seed, project="qt", setting="WP"):
@@ -53,6 +54,33 @@ def test_build_comparison_prefere_o_modelo_rodado_por_nos():
     assert len(deepjit) == 1
     assert deepjit["source"].iloc[0] == "nosso"
     assert set(comp["model"]) == {"deepjit", "lapredict", "cc2vec", "dbn_jit"}
+
+
+def _deep_csv(tmp_path):
+    path = tmp_path / "deep_baselines.csv"
+    pd.DataFrame([{"model": "deepjit", "project": "qt", "setting": "WP", "auc": 0.69,
+                   "pr_auc": 0.27}]).to_csv(path, index=False)
+    return path
+
+
+def test_deep_results_tem_auc_e_pr_auc(tmp_path):
+    df = deep_results(_deep_csv(tmp_path))
+    assert df.loc[0, "pr_auc"] == pytest.approx(0.27)
+    assert df[["f1", "mcc"]].isna().all().all()
+    assert (df["source"] == "autores").all()
+
+
+def test_deep_results_sem_arquivo_fica_vazio(tmp_path):
+    assert deep_results(tmp_path / "nao_existe.csv").empty
+
+
+def test_build_comparison_prefere_as_predicoes_dos_autores_ao_artigo(tmp_path):
+    comp = build_comparison(pd.DataFrame(_rows("lapredict", [0.7])), deep_path=_deep_csv(tmp_path))
+    deepjit = comp[comp["model"] == "deepjit"]
+    assert len(deepjit) == 1
+    assert deepjit["source"].iloc[0] == "autores"
+    # cc2vec nao ta no csv, entao vem do artigo
+    assert set(comp.loc[comp["model"] == "cc2vec", "source"]) == {"artigo"}
 
 
 def _comp():
