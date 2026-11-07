@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from src.evaluation.deep_baselines import load_results
 
 REF = Path("data/reference/rq4_t8.csv")
 OUT = Path("results/metrics/deep_baselines.csv")
@@ -34,3 +35,14 @@ def test_csv_tem_formato_esperado():
     assert set(df["model"]) == {"deepjit", "cc2vec"}
     assert set(df["setting"]) == {"WP", "CP"}
     assert df[["auc", "pr_auc"]].notna().all().all()
+
+def test_load_results_le_arquivo_pequeno(tmp_path):
+    (tmp_path / "deepjit").mkdir()
+    (tmp_path / "cc2vec").mkdir()
+    (tmp_path / "deepjit" / "foo_bar_WP.result").write_text("0\t0.1\n1\t0.9\n0\t0.2\n1\t0.8\n")
+    df = load_results(tmp_path)
+    assert len(df) == 1
+    row = df.iloc[0]
+    assert row["model"] == "deepjit"
+    assert row["project"] == "foo_bar" and row["setting"] == "WP"
+    assert row["auc"] == 1.0
