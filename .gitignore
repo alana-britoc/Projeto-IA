@@ -69,6 +69,7 @@ results/metrics/*
 *.pkl
 *.pickle
 *.joblib
+!models/simulador.joblib
 *.h5
 *.hdf5
 *.onnx
