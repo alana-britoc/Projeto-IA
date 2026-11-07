@@ -10,7 +10,8 @@ from src.evaluation.metrics import METRIC_NAMES  # noqa: E402
 FIGURES_DIR = ROOT / "results" / "figures"
 
 # paleta categorica em ordem fixa: a cor segue o modelo, nao a posicao no ranking
-PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
+PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948",
+           "#8a6d3b"]
 SURFACE = "#fcfcfb"
 INK = "#0b0b0b"
 INK_2 = "#52514e"
@@ -63,10 +64,15 @@ def plot_metrics(comp, order, baseline="lapredict", path=None):
                labelcolor=INK_2)
     fig.suptitle("Modelos por métrica (6 projetos × WP/CP; traço = média; tracejado = média do "
                  f"{baseline})", x=0.01, ha="left", color=INK, fontsize=12)
+    notes = []
+    deep = sorted(set(comp.loc[comp["source"] == "autores", "model"]))
+    if deep:
+        notes.append(f"{', '.join(deep)}: só AUC e PR-AUC, das predições dos autores")
     paper = sorted(set(comp.loc[comp["source"] == "artigo", "model"]))
     if paper:
-        fig.text(0.01, 0.01, f"{', '.join(paper)}: AUC publicada no artigo (sem as outras métricas)",
-                 color=MUTED, fontsize=8)
+        notes.append(f"{', '.join(paper)}: só a AUC publicada no artigo")
+    if notes:
+        fig.text(0.01, 0.01, "; ".join(notes), color=MUTED, fontsize=8)
     fig.tight_layout(rect=(0, 0.02, 1, 0.95))
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=150, facecolor=SURFACE)
@@ -96,10 +102,12 @@ def plot_auc_by_project(comp, order, path=None):
         ax.set_ylim(0.5, None)
         ax.set_title(setting, loc="left", color=INK, fontsize=11, fontweight="bold")
         ax.set_ylabel("AUC", color=INK_2, fontsize=9)
-    fig.legend(loc="upper right", frameon=False, ncol=n, fontsize=9, labelcolor=INK_2)
+    # duas linhas pra nao cobrir o titulo
+    fig.legend(loc="upper left", bbox_to_anchor=(0.01, 0.955), frameon=False, ncol=min(n, 5),
+               fontsize=9, labelcolor=INK_2)
     fig.suptitle("AUC por projeto (eixo começa em 0,5, o acaso)", x=0.01, ha="left", color=INK,
                  fontsize=12)
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.tight_layout(rect=(0, 0, 1, 0.87))
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)
@@ -127,7 +135,8 @@ def plot_effect_sizes(tests, baseline="lapredict", path=None):
         ax.set_yticks(range(len(sub)), sub["model"])
         # mesma altura de linha em todos os paineis, mesmo com um modelo so
         ax.set_ylim(rows - 0.5, -0.5)
-        ax.set_xlim(-1.15, 1.15)
+        # folga pro rotulo nao encostar no nome
+        ax.set_xlim(-1.4, 1.4)
         ax.set_title(METRIC_NAMES[metric], loc="left", color=INK, fontsize=11, fontweight="bold")
     fig.suptitle(f"Cliff's delta contra o {baseline} (positivo = melhor que o {baseline}; "
                  "* = p < 0,05 no Wilcoxon com Holm)", x=0.01, ha="left", color=INK, fontsize=11)
