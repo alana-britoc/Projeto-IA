@@ -13,12 +13,13 @@ from src.data.loader import FEATURES, PROJECTS, ROOT, load_split
 from src.preprocessing.scaling import standardize
 
 MODELS = {"LApredict": ["la"], "LR-JIT": FEATURES}
+REFERENCE = ROOT / "data" / "reference" / "rq4_t8.csv"
 
 
-def load_reference():
+def load_reference(path=REFERENCE):
     """Lê data/reference/rq4_t8.csv (copiado de ResultAnalysis/RQ4-T8)."""
     rows = [l.rstrip(", \n").split(", ")
-            for l in open(ROOT / "data/reference/rq4_t8.csv")]
+            for l in open(path)]
     cols = [f"{p}_{t}" for p, t in zip(rows[0][1:], rows[1][1:])]
     return {r[0]: dict(zip(cols, map(float, r[1:]))) for r in rows[2:]}
 

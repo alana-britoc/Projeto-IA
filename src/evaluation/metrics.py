@@ -4,6 +4,9 @@ from sklearn.metrics import (average_precision_score, f1_score, matthews_corrcoe
                              precision_recall_curve, precision_score, recall_score,
                              roc_auc_score)
 
+# nome bonito pra tabela e grafico
+METRIC_NAMES = {"auc": "AUC", "pr_auc": "PR-AUC", "f1": "F1", "mcc": "MCC"}
+
 
 def best_threshold(y_true, y_prob):
     # pega o limiar com maior f1 (rodar na validacao, nunca no teste)

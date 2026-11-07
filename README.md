@@ -149,6 +149,23 @@ git switch -c issue-12-descricao-curta
 
 Faça commits pequenos e claros. Ao concluir a atividade, envie a branch e abra um Pull Request utilizando o modelo do repositório.
 
+## Comparação final
+
+Depois de rodar os experimentos (`python -m src.evaluation.run_experiment`), gere a comparação com o LApredict:
+
+```bash
+python -m src.evaluation.compare
+```
+
+O script lê todos os `results/metrics/experimentos_*.csv`, junta com o DeepJIT e o CC2Vec (`results/metrics/deep_baselines.csv`, gerado pelo `deep_baselines`) e com a AUC publicada do DBN-JIT, e gera:
+
+- `results/metrics/comparacao_<metrica>.csv`: AUC, PR-AUC, F1 e MCC por modelo, projeto e cenário;
+- `results/metrics/comparacao_testes.csv`: Wilcoxon pareado (com Holm) e Cliff's delta contra o LApredict;
+- `results/figures/*.png`: gráficos comparativos;
+- `results/comparacao.md`: resumo e resposta à pergunta "algum modelo supera o LApredict?".
+
+Modelo novo entra sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo.
+
 ## Observação
 
 Este template não contém uma solução de Machine Learning. A escolha das técnicas, a implementação, os testes, os experimentos e a análise dos resultados são responsabilidades dos alunos.
