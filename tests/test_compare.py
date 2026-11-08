@@ -2,16 +2,38 @@ import pandas as pd
 import pytest
 
 from src.data.loader import PROJECTS
-from src.evaluation.compare import (aggregate, all_tests, answer, build_comparison,
+from src.evaluation.compare import (METRICS, aggregate, all_tests, answer, build_comparison,
                                     compare_to_baseline, deep_results, load_results,
                                     metric_table, paper_results, save_outputs, summary_table,
                                     verdict)
 
 
-def _rows(model, auc_by_seed, project="qt", setting="WP"):
-    return [{"model": model, "project": project, "setting": setting, "seed": s,
+def _rows(model, auc_by_seed, project="qt", setting="WP", esforco=True):
+    rows = [{"model": model, "project": project, "setting": setting, "seed": s,
              "auc": a, "pr_auc": a / 2, "f1": a / 3, "mcc": a / 4}
             for s, a in enumerate(auc_by_seed)]
+    if esforco:
+        for r in rows:
+            r.update(popt=r["auc"] * 0.9, recall_20=r["auc"] / 5)
+    return rows
+
+
+def test_metricas_incluem_as_de_esforco():
+    assert METRICS == ["auc", "pr_auc", "f1", "mcc", "popt", "recall_20"]
+
+
+def test_csv_antigo_sem_esforco_nao_quebra_a_comparacao():
+    # resultados rodados antes da #25 nao tem popt nem recall_20
+    rows = []
+    for p in PROJECTS:
+        for s in ("WP", "CP"):
+            rows += (_rows("lapredict", [0.7], p, s, esforco=False)
+                     + _rows("bom", [0.8], p, s, esforco=False))
+    comp = build_comparison(pd.DataFrame(rows))
+    assert comp["popt"].isna().all()
+    tests = all_tests(comp)
+    assert "popt" not in set(tests["metric"])
+    assert "auc" in set(tests["metric"])
 
 
 def test_load_results_le_todos_os_csvs(tmp_path):
@@ -107,9 +129,9 @@ def test_metric_table_descarta_modelo_sem_a_metrica():
     assert set(t.index) == {"lapredict", "bom"}
 
 
-def test_summary_table_tem_as_quatro_metricas():
+def test_summary_table_tem_todas_as_metricas():
     s = summary_table(_comp())
-    assert {m for m, _ in s.columns} == {"auc", "pr_auc", "f1", "mcc"}
+    assert {m for m, _ in s.columns} == set(METRICS)
     assert s.loc["bom", ("auc", "CP")] == pytest.approx(0.80)
 
 
@@ -157,9 +179,9 @@ def test_verdict(p_holm, delta, magnitude, esperado):
     assert verdict({"p_holm": p_holm, "delta": delta, "magnitude": magnitude}) == esperado
 
 
-def test_all_tests_cobre_as_quatro_metricas():
+def test_all_tests_cobre_todas_as_metricas():
     t = all_tests(_comp_com_ruido())
-    assert set(t["metric"]) == {"auc", "pr_auc", "f1", "mcc"}
+    assert set(t["metric"]) == set(METRICS)
     assert t.set_index(["metric", "model"]).loc[("f1", "bom"), "verdict"] == "supera"
 
 
@@ -186,7 +208,8 @@ def test_save_outputs_gera_tabelas_e_relatorio(tmp_path):
     names = {p.name for p in paths}
     assert {"comparacao_resultados.csv", "comparacao_resumo.csv", "comparacao_testes.csv",
             "comparacao_auc.csv", "comparacao_pr_auc.csv", "comparacao_f1.csv",
-            "comparacao_mcc.csv", "comparacao.md"} == names
+            "comparacao_mcc.csv", "comparacao_popt.csv", "comparacao_recall_20.csv",
+            "comparacao.md"} == names
     # o load_results nao pode confundir as tabelas da comparacao com experimentos
     assert not list(tmp_path.glob("experimentos_*.csv"))
     report = (tmp_path / "comparacao.md").read_text(encoding="utf-8")
