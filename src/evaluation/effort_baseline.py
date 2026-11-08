@@ -13,11 +13,10 @@ Saida: results/metrics/esforco_referencia.csv
 import numpy as np
 import pandas as pd
 
-from src.data.loader import PROJECTS, ROOT, load_split
+from src.data.loader import PROJECTS, ROOT, SETTINGS, load_split
 from src.evaluation.metrics import popt, recall_at_effort
 
 OUTPUT = ROOT / "results" / "metrics" / "esforco_referencia.csv"
-SETTINGS = ["WP", "CP"]
 
 
 def size_only(y_true, effort):
