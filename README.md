@@ -30,6 +30,11 @@ O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos s
 
 **Métricas:** AUC, PR-AUC, F1 e MCC. O limiar de decisão do F1 e do MCC é escolhido nos 20% finais do treino, nunca no teste.
 
+**Métricas de esforço:** medem quantos defeitos se encontra revisando só parte das linhas alteradas, o que conversa com o uso prático da predição. O esforço de um commit é `la + ld` (linhas adicionadas e removidas), e os commits são revisados em ordem de densidade de risco (probabilidade dividida pelo esforço), como em Kamei et al. (2013).
+
+- **Popt:** área sob a curva de esforço acumulado × defeitos encontrados, normalizada entre a pior ordem (0) e a ordem ótima (1).
+- **Recall@20%:** fração dos commits com defeito encontrados revisando, nessa ordem, os commits que somam até 20% das linhas do teste.
+
 ## Estrutura do repositório
 
 ```text
@@ -149,7 +154,7 @@ python -m src.evaluation.compare
 
 O script lê todos os `results/metrics/experimentos_*.csv` e o `deep_baselines.csv`, e usa a AUC publicada no artigo para o DBN-JIT. A média das seeds de cada modelo é comparada com o LApredict pelo teste de Wilcoxon pareado, com correção de Holm, e pelo Cliff's delta. Cada par é um projeto × cenário. O script gera:
 
-- `results/metrics/comparacao_<metrica>.csv`: AUC, PR-AUC, F1 e MCC por modelo, projeto e cenário
+- `results/metrics/comparacao_<metrica>.csv`: AUC, PR-AUC, F1, MCC, Popt e Recall@20% por modelo, projeto e cenário
 - `results/metrics/comparacao_testes.csv`: resultado dos testes estatísticos
 - `results/figures/*.png`: gráficos comparativos
 - `results/comparacao.md`: relatório com a resposta à pergunta "algum modelo supera o LApredict?"
