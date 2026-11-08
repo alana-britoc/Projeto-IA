@@ -57,20 +57,23 @@ with resultado:
     st.subheader("Resultado")
     st.metric("Probabilidade de introduzir defeito", f"{prob:.0%}")
     st.progress(prob)
-    st.metric("Mais arriscado que", f"{pct:.0f}% dos commits do treino")
-    st.caption("O modelo dá mais peso aos commits com defeito durante o treino, então a "
-               "probabilidade tende a ficar acima da frequência real "
-               f"({bundle['defect_rate']:.0%} dos commits do treino tinham defeito). Por isso "
-               "a comparação com os commits do treino é mais fácil de interpretar.")
+    st.metric("Mais arriscado que", f"{pct:.0f}% dos commits")
+    st.caption("A probabilidade é calibrada: entre os commits que o modelo marca com 30%, "
+               "cerca de 30% tinham defeito de verdade. Nos commits mais recentes dos 6 "
+               f"projetos, {bundle['defect_rate']:.0%} tinham defeito.")
 
     with st.expander("Sobre o modelo"):
         params = bundle["params"]
-        n_train = f"{bundle['n_train']:,}".replace(",", ".")
+        n = {k: f"{bundle[k]:,}".replace(",", ".") for k in ("n_train", "n_calib", "n_eval")}
+        brier = bundle["brier"]
         st.markdown(
             f"- Random Forest com {params['n_estimators']} árvores de profundidade até "
-            f"{params['max_depth']}\n"
-            f"- Treinado com {n_train} commits\n"
-            f"- AUC out-of-bag: {bundle['oob_auc']:.3f}\n"
+            f"{params['max_depth']}, calibrado com o método {bundle['method']}\n"
+            f"- {n['n_train']} commits de treino, {n['n_calib']} de calibração e "
+            f"{n['n_eval']} de avaliação (80%, 10% e 10% de cada projeto, em ordem de data)\n"
+            f"- Brier score na avaliação: {brier['sem calibração']:.3f} sem calibração e "
+            f"{brier[bundle['method']]:.3f} calibrado (menor é melhor)\n"
+            f"- AUC na avaliação: {bundle['auc']:.3f}\n"
             f"- scikit-learn {bundle['sklearn_version']}\n\n"
             "Os outros hiperparâmetros são os que a busca escolheu mais vezes nos "
             "experimentos. Para treinar de novo: `python -m src.models.train_simulator`.")
