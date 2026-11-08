@@ -136,7 +136,12 @@ def compare_to_baseline(comp, metric, baseline=BASELINE, settings=ARTIGO):
         raise KeyError(f"baseline {baseline} sem resultados de {metric}")
     rows = []
     for model in model_order(comp, baseline):
-        if model == baseline or model not in wide.columns or wide[model].isna().all():
+        if model == baseline or model not in wide.columns:
+            continue
+        # o modelo precisa ter a metrica em todos os cenarios da comparacao. Ex.: os modelos do
+        # artigo nao tem CP_crono, e no realista entrariam so com os 6 pares do WP
+        has = wide[model].notna().groupby(level="setting").any()
+        if not all(has.get(s, False) for s in settings):
             continue
         r = paired_test(wide[model].to_numpy(), wide[baseline].to_numpy())
         rows.append({"metric": metric, "model": model, "baseline": baseline, **r})
