@@ -12,7 +12,8 @@ def fake_split(project, setting, features):
     X = rng.normal(size=(240, len(features)))
     y = (X[:, 0] + rng.normal(size=240) > 0).astype(int)
     return {"X_train": X[:200], "y_train": y[:200],
-            "X_test": X[200:], "y_test": y[200:], "ids_test": np.arange(40)}
+            "X_test": X[200:], "y_test": y[200:], "ids_test": np.arange(40),
+            "effort_test": rng.integers(0, 50, size=40).astype(float)}
 
 
 @pytest.fixture
@@ -33,6 +34,12 @@ def test_run_one_com_busca_registra_n_iter(output):
     assert row["cv_auc"] is not None
     assert "logisticregression__C" in row["best_params"]
     assert 0 <= row["auc"] <= 1
+
+
+def test_run_one_registra_as_metricas_de_esforco(output):
+    row = run_experiment.run_one("lapredict", "qt", "WP", 0)
+    assert 0 <= row["popt"] <= 1
+    assert 0 <= row["recall_20"] <= 1
 
 
 def test_busca_nao_ve_os_20_porcento_finais_do_treino(output, monkeypatch):
