@@ -1,5 +1,7 @@
 # Predição de Defeitos Just-in-Time com Machine Learning
 
+[![Testes](https://github.com/alana-britoc/Projeto-IA/actions/workflows/testes.yml/badge.svg)](https://github.com/alana-britoc/Projeto-IA/actions/workflows/testes.yml)
+
 Projeto da disciplina de Inteligência Artificial. A equipe replica e estende o artigo *Deep Just-in-Time Defect Prediction: How Far Are We?* (Zeng et al., ISSTA 2021).
 
 ## Equipe
