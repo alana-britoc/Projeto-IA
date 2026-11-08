@@ -9,7 +9,7 @@ import argparse
 
 import pandas as pd
 
-from src.data.loader import PROJECTS, ROOT
+from src.data.loader import PROJECTS, ROOT, SETTINGS
 from src.evaluation import plots
 from src.evaluation.metrics import METRIC_NAMES
 from src.evaluation.reproduce import REFERENCE, load_reference
@@ -22,6 +22,11 @@ METRICS = list(METRIC_NAMES)
 KEYS = ["model", "project", "setting"]
 BASELINE = "lapredict"
 ALPHA = 0.05
+# cenarios de cada comparacao (#24). A do artigo usa o CP com treino do futuro; a realista troca
+# pelo CP_crono. O CP_crono sozinho daria so 6 pares, e com 6 pares o menor p do Wilcoxon e
+# 0,031, que nao passa no Holm com varios modelos. Com o WP junto, sao 12 pares nas duas
+ARTIGO = ("WP", "CP")
+REALISTA = ("WP", "CP_crono")
 # modelos do artigo que a gente nao roda. LApredict e LR-JIT ficam de fora pq ja temos os nossos
 PAPER_MODELS = {"DeepJIT": "deepjit", "CC2Vec": "cc2vec", "DBN-JIT": "dbn_jit"}
 
@@ -87,11 +92,11 @@ def model_order(comp, baseline="lapredict"):
 
 
 def metric_table(comp, metric):
-    """Uma linha por modelo, uma coluna por projeto x cenario, mais a media de WP e de CP."""
+    """Uma linha por modelo, uma coluna por projeto x cenario, mais a media de cada cenario."""
     table = comp.pivot_table(index="model", columns=["setting", "project"], values=metric,
                              dropna=False)
     table = table.dropna(how="all")
-    for setting in ("WP", "CP"):
+    for setting in SETTINGS:
         if setting in table.columns.get_level_values(0):
             table[(setting, "media")] = table[setting].mean(axis=1, skipna=False)
     table = table.reindex(columns=sorted(table.columns, key=_column_key))
@@ -101,29 +106,42 @@ def metric_table(comp, metric):
 def _column_key(col):
     setting, project = col
     order = PROJECTS + ["media"]
-    return (["WP", "CP"].index(setting), order.index(project) if project in order else 99)
+    return (SETTINGS.index(setting), order.index(project) if project in order else 99)
 
 
 def summary_table(comp):
-    """Media das 6 bases por modelo e cenario, com as 4 metricas lado a lado."""
+    """Media das 6 bases por modelo e cenario, com as metricas lado a lado."""
     summ = comp.groupby(["model", "setting"])[METRICS].mean().unstack("setting")
-    summ = summ.reindex(columns=[(m, s) for m in METRICS for s in ("WP", "CP")])
+    present = [s for s in SETTINGS if s in set(comp["setting"])]
+    summ = summ.reindex(columns=[(m, s) for m in METRICS for s in present])
     return summ.reindex(model_order(comp))
 
 
-def compare_to_baseline(comp, metric, baseline=BASELINE):
+def available_comparisons(comp, baseline=BASELINE):
+    """A do artigo (WP + CP) sempre; a realista (WP + CP_crono) se o baseline rodou no CP_crono."""
+    has_crono = ((comp["model"] == baseline) & (comp["setting"] == "CP_crono")).any()
+    return [ARTIGO, REALISTA] if has_crono else [ARTIGO]
+
+
+def compare_to_baseline(comp, metric, baseline=BASELINE, settings=ARTIGO):
     """Wilcoxon pareado + Cliff's delta de cada modelo contra o baseline numa metrica.
 
-    Os pares sao projeto x cenario (12 quando o modelo tem todos). O p-valor e corrigido
-    com Holm entre os modelos comparados na mesma metrica.
+    Os pares sao projeto x cenario, so dos cenarios em `settings` (12 com dois cenarios). O
+    p-valor e corrigido com Holm entre os modelos comparados na mesma metrica.
     """
+    comp = comp[comp["setting"].isin(settings)]
     wide = comp.pivot_table(index=["project", "setting"], columns="model", values=metric,
                             dropna=False)
     if baseline not in wide.columns:
         raise KeyError(f"baseline {baseline} sem resultados de {metric}")
     rows = []
     for model in model_order(comp, baseline):
-        if model == baseline or model not in wide.columns or wide[model].isna().all():
+        if model == baseline or model not in wide.columns:
+            continue
+        # o modelo precisa ter a metrica em todos os cenarios da comparacao. Ex.: os modelos do
+        # artigo nao tem CP_crono, e no realista entrariam so com os 6 pares do WP
+        has = wide[model].notna().groupby(level="setting").any()
+        if not all(has.get(s, False) for s in settings):
             continue
         r = paired_test(wide[model].to_numpy(), wide[baseline].to_numpy())
         rows.append({"metric": metric, "model": model, "baseline": baseline, **r})
@@ -141,19 +159,24 @@ def verdict(row, alpha=ALPHA):
     return "supera" if row["delta"] > 0 else "perde"
 
 
-def all_tests(comp, baseline=BASELINE):
+def all_tests(comp, baseline=BASELINE, settings=ARTIGO):
     # so testa as metricas que o baseline tem (ex.: CSV antigo, sem as metricas de esforco)
-    has = comp.loc[comp["model"] == baseline, METRICS].notna().any()
-    tests = [compare_to_baseline(comp, m, baseline) for m in METRICS if has[m]]
+    has = comp.loc[(comp["model"] == baseline) & comp["setting"].isin(settings),
+                   METRICS].notna().any()
+    tests = [compare_to_baseline(comp, m, baseline, settings) for m in METRICS if has[m]]
     out = pd.concat([t for t in tests if not t.empty], ignore_index=True)
     out["verdict"] = out.apply(verdict, axis=1)
+    out["cenarios"] = "+".join(settings)
     return out
 
 
 def answer(tests, baseline=BASELINE, alpha=ALPHA):
-    """Responde em texto: algum modelo supera o baseline?"""
+    """Responde em texto: algum modelo supera o baseline? (titulo, linha vazia, resposta...)"""
     winners = tests[tests["verdict"] == "supera"]
-    lines = [f"## Algum modelo supera o {baseline}?", ""]
+    realista = "cenarios" in tests and (tests["cenarios"] == "+".join(REALISTA)).all()
+    title = (f"## Algum modelo supera o {baseline} no cenário realista (WP + CP cronológico)?"
+             if realista else f"## Algum modelo supera o {baseline}?")
+    lines = [title, ""]
     if winners.empty:
         lines.append(f"**Não.** Nenhum modelo foi significativamente melhor que o {baseline} "
                      f"em nenhuma métrica (Wilcoxon pareado com Holm, alfa = {alpha}, "
@@ -232,15 +255,26 @@ def save_outputs(comp, tests, metrics_dir=METRICS_DIR, report=REPORT):
     if paper:
         text += [f"{', '.join(paper)}: só a AUC publicada no artigo (Tabela 8).", ""]
     text += _effort_reference_note(metrics_dir / "esforco_referencia.csv")
-    text += [answer(tests),
-             "Pares = projeto × cenário, com a média das seeds de cada modelo. "
+    groups = tests["cenarios"] if "cenarios" in tests else pd.Series("+".join(ARTIGO),
+                                                                      index=tests.index)
+    text += [answer(tests[groups == "+".join(ARTIGO)]),
+             "Pares = projeto × cenário (WP e CP), com a média das seeds de cada modelo. "
              "O p-valor é do Wilcoxon pareado bicaudal, corrigido por Holm entre os modelos "
              "de cada métrica. Magnitude do Cliff's delta pelos limiares de Romano et al. (2006).",
              "",
              "**Limitação do CP:** o treino usa os outros cinco projetos inteiros, então parte "
              "dos commits de treino é mais recente que o período de teste. O artigo faz assim "
-             "e mantivemos para comparar nas mesmas condições.",
-             "", "Figuras em `results/figures/`.", ""]
+             "e mantivemos para comparar nas mesmas condições. A comparação abaixo corrige isso.",
+             ""]
+    realista = tests[groups == "+".join(REALISTA)]
+    if not realista.empty:
+        text += [answer(realista),
+                 "Mesmo teste, trocando o CP pelo CP_crono: o mesmo período de teste, mas o "
+                 "treino só tem os commits dos outros projetos anteriores ao primeiro commit de "
+                 "teste, como seria num uso real. Os pares continuam 12 (WP e CP_crono), porque "
+                 "com só os 6 do CP_crono o Wilcoxon não chega a p < 0,05 depois do Holm.",
+                 ""]
+    text += ["Figuras em `results/figures/`.", ""]
     report.write_text("\n".join(text), encoding="utf-8")
     paths.append(report)
     return paths
@@ -254,14 +288,22 @@ def main():
 
     comp = build_comparison(load_results())
     order = model_order(comp, args.baseline)
-    tests = all_tests(comp, args.baseline)
+    by_comparison = {s: all_tests(comp, args.baseline, s)
+                     for s in available_comparisons(comp, args.baseline)}
+    tests = pd.concat(by_comparison.values(), ignore_index=True)
     paths = save_outputs(comp, tests)
     paths += [plots.plot_metrics(comp, order, args.baseline),
               plots.plot_auc_by_project(comp, order),
-              plots.plot_effect_sizes(tests, args.baseline)]
+              plots.plot_effect_sizes(by_comparison[ARTIGO], args.baseline)]
+    if REALISTA in by_comparison:
+        paths.append(plots.plot_effect_sizes(
+            by_comparison[REALISTA], args.baseline,
+            path=plots.FIGURES_DIR / "cliffs_delta_lapredict_realista.png",
+            scenario="WP + CP cronológico"))
 
     print(summary_table(comp).round(3).to_string(), "\n")
-    print(answer(tests, args.baseline))
+    for t in by_comparison.values():
+        print(answer(t, args.baseline))
     print("Salvo em:\n" + "\n".join(f"  {p.relative_to(ROOT)}" for p in paths))
 
 

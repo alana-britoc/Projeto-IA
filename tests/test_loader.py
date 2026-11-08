@@ -42,3 +42,20 @@ def test_esforco_do_teste_e_la_mais_ld(raw):
 def test_setting_invalido_da_erro(raw):
     with pytest.raises(ValueError):
         loader.load_split("qt", "XX")
+
+
+def test_cp_crono_so_treina_com_commits_anteriores_ao_teste(raw):
+    # #24: treino CP com datas 100 a 105 e teste comecando em 103
+    _commits(6, 100, 5.0).to_csv(raw / "qt" / "cross" / "k_train.csv", index=False)
+    _commits(4, 103, 7.0).to_csv(raw / "qt" / "cross" / "k_test.csv", index=False)
+    cp = loader.load_split("qt", "CP")
+    crono = loader.load_split("qt", "CP_crono")
+    assert len(cp["y_train"]) == 6
+    assert len(crono["y_train"]) == 3
+    # o teste e o mesmo do CP
+    assert list(crono["ids_test"]) == list(cp["ids_test"])
+    assert list(crono["effort_test"]) == list(cp["effort_test"])
+
+
+def test_cenarios_disponiveis():
+    assert loader.SETTINGS == ["WP", "CP", "CP_crono"]

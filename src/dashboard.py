@@ -5,25 +5,33 @@ de results/comparacao.md. Le so os CSVs versionados, nao precisa do dataset.
 """
 import altair as alt
 
-from src.data.loader import PROJECTS
-from src.evaluation.compare import (METRICS_DIR, all_tests, answer, build_comparison,
-                                    load_results, model_order)
+import pandas as pd
+
+from src.data.loader import PROJECTS, SETTINGS
+from src.evaluation.compare import (METRICS_DIR, all_tests, answer, available_comparisons,
+                                    build_comparison, load_results, model_order)
 from src.evaluation.metrics import METRIC_NAMES
 from src.evaluation.plots import MUTED, REFERENCE_MARKERS, SETTING_COLORS, model_colors
 
-SETTINGS = ["WP", "CP"]
-SETTING_NAMES = {"WP": "WP (mesmo projeto)", "CP": "CP (outros projetos)"}
+SETTING_NAMES = {"WP": "WP (mesmo projeto)", "CP": "CP (outros projetos)",
+                 "CP_crono": "CP cronológico (outros projetos, só o passado)"}
+# comparacoes estatisticas contra o LApredict (#24), pela coluna "cenarios" dos testes
+COMPARISON_NAMES = {"WP+CP": "WP + CP (como no artigo)",
+                    "WP+CP_crono": "WP + CP cronológico (realista)"}
 
 
 def load_comparison(metrics_dir=METRICS_DIR):
-    """Retorna (comp, tests, order): resultados por projeto x cenario, testes e ordem dos modelos."""
+    """Retorna (comp, tests, order): resultados por projeto x cenario, testes das comparacoes
+    disponiveis e ordem dos modelos."""
     comp = build_comparison(load_results(metrics_dir))
     order = model_order(comp)
     # lapredict primeiro e depois por AUC, igual nas figuras; projetos na ordem do artigo
     rank = {"model": order, "project": PROJECTS, "setting": SETTINGS}
     comp = comp.sort_values(["model", "project", "setting"],
                             key=lambda s: s.map({v: i for i, v in enumerate(rank[s.name])}))
-    return comp.reset_index(drop=True), all_tests(comp), order
+    tests = pd.concat([all_tests(comp, settings=s) for s in available_comparisons(comp)],
+                      ignore_index=True)
+    return comp.reset_index(drop=True), tests, order
 
 
 def headline(tests):
@@ -109,4 +117,4 @@ def project_chart(comp, metric, order):
                  alt.Tooltip("project:N", title="Projeto"),
                  alt.Tooltip("setting:N", title="Cenário"),
                  alt.Tooltip(f"{metric}:Q", title=name, format=".4f")],
-    ).properties(width=440, height=320)
+    ).properties(width=880 // max(len(settings), 2), height=320)

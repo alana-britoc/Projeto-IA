@@ -1,12 +1,37 @@
 import pandas as pd
 import pytest
 
-from src.data.loader import PROJECTS
-from src.evaluation.compare import PAPER_MODELS, all_tests, build_comparison, model_order
+from src.data.loader import PROJECTS, SETTINGS
+from src.evaluation.compare import (PAPER_MODELS, REALISTA, all_tests, build_comparison,
+                                    model_order)
 from src.evaluation.metrics import METRIC_NAMES
 from src.evaluation.plots import (MODEL_COLORS, PALETTE, REFERENCE_COLORS, REFERENCE_MARKERS,
-                                  metric_grid, model_colors, plot_auc_by_project,
-                                  plot_effect_sizes, plot_metrics)
+                                  SETTING_COLORS, metric_grid, model_colors,
+                                  plot_auc_by_project, plot_effect_sizes, plot_metrics)
+
+
+def test_cada_cenario_tem_uma_cor_propria():
+    # #24: o CP_crono entra com a 3a cor da paleta, que e distinguivel das duas primeiras
+    assert list(SETTING_COLORS) == SETTINGS
+    assert len(set(SETTING_COLORS.values())) == len(SETTINGS)
+
+
+def test_graficos_com_o_cp_crono(tmp_path):
+    rows = []
+    for i, p in enumerate(PROJECTS):
+        for s in SETTINGS:
+            for model, auc in (("lapredict", 0.70 + 0.01 * i), ("outro", 0.66 + 0.012 * i)):
+                rows.append({"model": model, "project": p, "setting": s, "seed": 0,
+                             "auc": auc, "pr_auc": auc / 2, "f1": auc / 3, "mcc": auc / 4,
+                             "popt": auc / 2, "recall_20": auc / 5})
+    comp = build_comparison(pd.DataFrame(rows))
+    order = model_order(comp)
+    paths = [plot_metrics(comp, order, path=tmp_path / "m.png"),
+             plot_auc_by_project(comp, order, path=tmp_path / "a.png"),
+             plot_effect_sizes(all_tests(comp, settings=REALISTA), path=tmp_path / "d.png",
+                               scenario="WP + CP cronológico")]
+    for path in paths:
+        assert path.exists() and path.stat().st_size > 0
 
 
 def test_grade_tem_um_painel_para_cada_metrica():

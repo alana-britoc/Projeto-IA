@@ -3,7 +3,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from src import dashboard
-from src.data.loader import PROJECTS, ROOT
+from src.data.loader import PROJECTS, ROOT, SETTINGS
 from src.evaluation.plots import REFERENCE_MARKERS, model_colors
 
 
@@ -22,16 +22,18 @@ def test_carrega_todos_os_modelos_versionados(data):
 def test_resultados_seguem_a_ordem_dos_modelos(data):
     comp, _, order = data
     assert list(dict.fromkeys(comp["model"])) == order
-    first = comp.head(12)
+    # 6 projetos x cenarios que existem (3 com o CP_crono da #24)
+    first = comp.head(len(PROJECTS) * comp["setting"].nunique())
     assert set(first["model"]) == {"lapredict"}
     assert list(dict.fromkeys(first["project"])) == PROJECTS
+    assert list(dict.fromkeys(first["setting"])) == SETTINGS
 
 
 def test_testes_batem_com_o_csv_da_comparacao(data):
     # o painel recalcula com as funcoes da #7, entao tem que dar o mesmo que foi versionado
     _, tests, _ = data
     saved = pd.read_csv(ROOT / "results" / "metrics" / "comparacao_testes.csv")
-    keys = ["metric", "model"]
+    keys = ["cenarios", "metric", "model"]
     merged = tests.merge(saved, on=keys, suffixes=("", "_csv"))
     assert len(merged) == len(saved) == len(tests)
     assert (merged["verdict"] == merged["verdict_csv"]).all()
@@ -41,8 +43,18 @@ def test_testes_batem_com_o_csv_da_comparacao(data):
 def test_resposta_igual_ao_relatorio(data):
     _, tests, _ = data
     report = (ROOT / "results" / "comparacao.md").read_text(encoding="utf-8")
-    assert dashboard.headline(tests) in report
-    assert dashboard.headline(tests).startswith(("**Sim", "**Não"))
+    for _, group in tests.groupby("cenarios"):
+        assert dashboard.headline(group) in report
+        assert dashboard.headline(group).startswith(("**Sim", "**Não"))
+
+
+def test_painel_tem_o_cp_crono_e_as_duas_comparacoes(data):
+    # #24: o cenario realista entra nos filtros e na comparacao estatistica
+    comp, tests, _ = data
+    assert dashboard.SETTINGS == SETTINGS
+    assert set(dashboard.SETTING_NAMES) == set(SETTINGS)
+    assert "CP_crono" in set(comp["setting"])
+    assert list(dict.fromkeys(tests["cenarios"])) == list(dashboard.COMPARISON_NAMES)
 
 
 def test_filtro_por_modelo_projeto_e_cenario(data):
@@ -70,6 +82,8 @@ def test_media_da_auc_do_lapredict_igual_ao_artigo(data):
 
 def test_tabela_de_testes_so_da_metrica_e_dos_modelos_escolhidos(data):
     _, tests, _ = data
+    # como na pagina: a tabela usa so os testes da comparacao escolhida
+    tests = tests[tests["cenarios"] == "WP+CP"]
     out = dashboard.tests_table(tests, "auc", ["random_forest", "svm"])
     assert list(out["Modelo"]) == ["random_forest", "svm"]
     assert "Resultado" in out.columns
@@ -99,3 +113,10 @@ def test_app_abre_sem_erro_e_troca_a_metrica():
     at.sidebar.selectbox[0].set_value("mcc").run()
     assert not at.exception
     assert any("MCC" in h.value for h in at.subheader)
+
+
+def test_app_troca_para_a_comparacao_realista():
+    at = AppTest.from_file(str(ROOT / "src" / "app.py"), default_timeout=60).run()
+    at.sidebar.radio[0].set_value("WP+CP_crono").run()
+    assert not at.exception
+    assert any("cenário realista" in h.value for h in at.subheader)

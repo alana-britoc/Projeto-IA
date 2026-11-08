@@ -37,6 +37,11 @@ def raw(tmp_path, monkeypatch):
     return tmp_path
 
 
+def test_referencia_cobre_o_cp_crono():
+    # #24: o CP_crono tem o mesmo teste do CP, mas precisa aparecer na tabela
+    assert effort_baseline.SETTINGS == loader.SETTINGS
+
+
 def test_tabela_tem_um_valor_por_projeto_e_cenario(raw):
     df = effort_baseline.reference_table(["qt", "go"], ["WP", "CP"])
     assert list(df.columns) == ["project", "setting", "popt", "recall_20"]

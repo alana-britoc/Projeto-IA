@@ -19,21 +19,33 @@ with st.sidebar:
     metric = st.selectbox("Métrica", list(METRIC_NAMES), format_func=METRIC_NAMES.get)
     models = st.multiselect("Modelos", order, default=order)
     projects = st.multiselect("Projetos", PROJECTS, default=PROJECTS)
-    settings = st.multiselect("Cenários", dashboard.SETTINGS, default=dashboard.SETTINGS,
+    available = [s for s in dashboard.SETTINGS if s in set(comp["setting"])]
+    settings = st.multiselect("Cenários", available, default=available,
                               format_func=dashboard.SETTING_NAMES.get,
                               help="WP: treino nos primeiros 80% dos commits do projeto e teste "
-                                   "nos últimos 20%. CP: treino nos outros cinco projetos.")
+                                   "nos últimos 20%. CP: treino nos outros cinco projetos, como "
+                                   "no artigo. CP cronológico: o mesmo teste do CP, mas só com "
+                                   "os commits dos outros projetos anteriores ao teste.")
+    comparisons = list(dict.fromkeys(tests["cenarios"]))
+    comparison = st.radio("Comparação estatística", comparisons,
+                          format_func=dashboard.COMPARISON_NAMES.get,
+                          help="Cenários usados nos testes contra o LApredict. No CP do artigo, "
+                               "parte do treino é mais recente que o teste.")
 
 name = METRIC_NAMES[metric]
+tests = tests[tests["cenarios"] == comparison]
+realista = comparison == "WP+CP_crono"
 
 st.title("Predição de commits que introduzem defeito")
 st.caption("Resultados do grupo Commit Limpo em 6 projetos, comparados com o LApredict "
            "(ISSTA 2021). Os dados vêm de `results/metrics/`.")
 
-st.subheader(f"Algum modelo supera o {BASELINE}?")
+st.subheader(f"Algum modelo supera o {BASELINE}"
+             + (" no cenário realista (WP + CP cronológico)?" if realista else "?"))
 st.markdown(dashboard.headline(tests))
 st.caption(f"Wilcoxon pareado com correção de Holm (alfa = {ALPHA}) e Cliff's delta não "
-           "negligível. Os testes usam sempre os 12 pares projeto × cenário, sem os filtros.")
+           f"negligível. Os testes usam sempre os 12 pares projeto × cenário de "
+           f"{dashboard.COMPARISON_NAMES[comparison]}, sem os filtros.")
 
 filtered = dashboard.filter_comparison(comp, models, projects, settings)
 with_metric = filtered.dropna(subset=[metric])
@@ -53,7 +65,7 @@ else:
     st.subheader(f"{name} por projeto e cenário")
     st.altair_chart(dashboard.project_chart(with_metric, metric, order))
 
-st.subheader(f"Testes contra o {BASELINE}: {name}")
+st.subheader(f"Testes contra o {BASELINE}: {name}, {dashboard.COMPARISON_NAMES[comparison]}")
 table = dashboard.tests_table(tests, metric, models)
 if table.empty:
     st.info(f"Nenhum modelo escolhido tem teste de {name}.")
