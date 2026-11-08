@@ -2,7 +2,8 @@ import pandas as pd
 import pytest
 
 from src.data.loader import PROJECTS
-from src.evaluation.compare import (METRICS, aggregate, all_tests, answer, build_comparison,
+from src.evaluation.compare import (ARTIGO, METRICS, REALISTA, aggregate, all_tests, answer,
+                                    available_comparisons, build_comparison,
                                     compare_to_baseline, deep_results, load_results,
                                     metric_table, paper_results, save_outputs, summary_table,
                                     verdict)
@@ -234,3 +235,67 @@ def test_relatorio_sem_referencia_de_esforco_nao_quebra(tmp_path):
     comp = _comp_com_ruido()
     save_outputs(comp, all_tests(comp), tmp_path, tmp_path / "comparacao.md")
     assert "Referência sem modelo" not in (tmp_path / "comparacao.md").read_text(encoding="utf-8")
+
+
+# cenario realista (#24): WP + CP_crono no lugar de WP + CP
+def _comp_com_crono():
+    # "bom" ganha nos 3 cenarios; "fragil" ganha no WP e no CP, mas perde no CP_crono
+    rows = []
+    for i, p in enumerate(PROJECTS):
+        for j, s in enumerate(("WP", "CP", "CP_crono")):
+            base = 0.65 + 0.01 * i + 0.003 * j
+            fragil = base - 0.04 - 0.001 * i if s == "CP_crono" else base + 0.04 + 0.001 * i
+            rows += (_rows("lapredict", [base], p, s) + _rows("bom", [base + 0.05 + 0.001 * i], p, s)
+                     + _rows("fragil", [fragil], p, s))
+    return build_comparison(pd.DataFrame(rows))
+
+
+def test_cada_comparacao_usa_so_os_seus_cenarios():
+    comp = _comp_com_crono()
+    for settings in (ARTIGO, REALISTA):
+        t = compare_to_baseline(comp, "auc", settings=settings).set_index("model")
+        assert t.loc["bom", "n"] == 12
+
+
+def test_modelo_que_so_ganha_com_treino_do_futuro_nao_supera_no_realista():
+    comp = _comp_com_crono()
+    artigo = all_tests(comp).set_index(["metric", "model"])
+    realista = all_tests(comp, settings=REALISTA).set_index(["metric", "model"])
+    assert artigo.loc[("auc", "fragil"), "verdict"] == "supera"
+    assert realista.loc[("auc", "fragil"), "verdict"] != "supera"
+    assert realista.loc[("auc", "bom"), "verdict"] == "supera"
+    assert set(artigo["cenarios"]) == {"WP+CP"}
+    assert set(realista["cenarios"]) == {"WP+CP_crono"}
+
+
+def test_comparacao_realista_so_existe_com_cp_crono():
+    assert available_comparisons(_comp_com_ruido()) == [ARTIGO]
+    assert available_comparisons(_comp_com_crono()) == [ARTIGO, REALISTA]
+
+
+def test_tabelas_incluem_o_cp_crono_depois_do_cp():
+    comp = _comp_com_crono()
+    s = summary_table(comp)
+    assert [c for c in s.columns if c[0] == "auc"] == [("auc", "WP"), ("auc", "CP"),
+                                                        ("auc", "CP_crono")]
+    t = metric_table(comp, "auc")
+    assert ("CP_crono", "media") in t.columns
+    assert list(dict.fromkeys(t.columns.get_level_values(0))) == ["WP", "CP", "CP_crono"]
+
+
+def test_resposta_do_cenario_realista_tem_titulo_proprio():
+    comp = _comp_com_crono()
+    texto = answer(all_tests(comp, settings=REALISTA))
+    assert texto.startswith("## Algum modelo supera o lapredict no cenário realista")
+    assert texto.splitlines()[2].startswith("**Sim:**")
+
+
+def test_save_outputs_inclui_as_duas_comparacoes(tmp_path):
+    comp = _comp_com_crono()
+    tests = pd.concat([all_tests(comp, settings=s) for s in available_comparisons(comp)])
+    save_outputs(comp, tests, tmp_path, tmp_path / "comparacao.md")
+    report = (tmp_path / "comparacao.md").read_text(encoding="utf-8")
+    assert "## Algum modelo supera o lapredict?" in report
+    assert "## Algum modelo supera o lapredict no cenário realista" in report
+    saved = pd.read_csv(tmp_path / "comparacao_testes.csv")
+    assert set(saved["cenarios"]) == {"WP+CP", "WP+CP_crono"}
