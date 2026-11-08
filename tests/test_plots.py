@@ -3,9 +3,18 @@ import pytest
 
 from src.data.loader import PROJECTS
 from src.evaluation.compare import PAPER_MODELS, all_tests, build_comparison, model_order
+from src.evaluation.metrics import METRIC_NAMES
 from src.evaluation.plots import (MODEL_COLORS, PALETTE, REFERENCE_COLORS, REFERENCE_MARKERS,
-                                  model_colors, plot_auc_by_project, plot_effect_sizes,
-                                  plot_metrics)
+                                  metric_grid, model_colors, plot_auc_by_project,
+                                  plot_effect_sizes, plot_metrics)
+
+
+def test_grade_tem_um_painel_para_cada_metrica():
+    # com 6 metricas (#25) a grade 2x2 antiga descartava Popt e Recall@20% sem avisar
+    rows, cols = metric_grid(len(METRIC_NAMES))
+    assert rows * cols >= len(METRIC_NAMES)
+    assert metric_grid(4) == (2, 2)
+    assert metric_grid(6) == (2, 3)
 from src.models.registry import MODELS
 
 

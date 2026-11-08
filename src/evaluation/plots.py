@@ -56,13 +56,29 @@ def _style(ax):
 SETTING_COLORS = {"WP": PALETTE[0], "CP": PALETTE[1]}
 
 
+def metric_grid(n):
+    """Linhas e colunas pra ter um painel por metrica (2 linhas)."""
+    return 2, -(-n // 2)
+
+
 def plot_metrics(comp, order, baseline="lapredict", path=None):
     """Um painel por metrica: cada ponto e um projeto x cenario, o traco preto e a media."""
     path = path or FIGURES_DIR / "comparacao_metricas.png"
-    fig, axes = plt.subplots(2, 2, figsize=(11, 7.5), facecolor=SURFACE)
+    rows, cols = metric_grid(len(METRIC_NAMES))
+    fig, axes = plt.subplots(rows, cols, figsize=(5.5 * cols, 7.5), facecolor=SURFACE)
+    for ax in axes.flat[len(METRIC_NAMES):]:
+        ax.set_visible(False)
     for ax, metric in zip(axes.flat, METRIC_NAMES):
         _style(ax)
+        ax.set_title(METRIC_NAMES[metric], loc="left", color=INK, fontsize=11, fontweight="bold")
         models = [m for m in order if comp.loc[comp["model"] == m, metric].notna().any()]
+        if not models:
+            # ex.: resultados rodados antes da metrica existir
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.text(0.5, 0.5, "sem resultados", transform=ax.transAxes, ha="center",
+                    color=MUTED, fontsize=10)
+            continue
         for y, model in enumerate(models):
             sub = comp[comp["model"] == model]
             for setting, offset in (("WP", -0.12), ("CP", 0.12)):
@@ -75,7 +91,6 @@ def plot_metrics(comp, order, baseline="lapredict", path=None):
         ax.axvline(base, color=MUTED, linewidth=1, linestyle="--", zorder=2)
         ax.set_yticks(range(len(models)), models)
         ax.set_ylim(len(models) - 0.5, -0.5)
-        ax.set_title(METRIC_NAMES[metric], loc="left", color=INK, fontsize=11, fontweight="bold")
     handles, labels = axes.flat[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper right", frameon=False, ncol=2, fontsize=9,
                labelcolor=INK_2)
