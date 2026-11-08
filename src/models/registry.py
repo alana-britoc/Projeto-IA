@@ -39,9 +39,12 @@ def _svm(seed):
 
 def _mlp(seed):
     # early_stopping separa uma validacao aleatoria, e nao cronologica, dentro do treino.
-    # desligado: o treino para quando a loss do treino estabiliza (n_iter_no_change)
+    # desligado: o treino para quando a loss do treino estabiliza (n_iter_no_change).
+    # max_iter=2000 (#27): com 200, 58% dos ajustes da grade nao convergiam. Os modelos finais
+    # precisaram de ate 278 iteracoes, e o pior caso da busca (lr 3e-4, rede (64, 32)) de 973.
+    # como o treino para quando converge, o limite maior so custa tempo onde e preciso
     return make_pipeline(StandardScaler(),
-                         MLPClassifier(max_iter=200, early_stopping=False, random_state=seed))
+                         MLPClassifier(max_iter=2000, early_stopping=False, random_state=seed))
 
 
 MODELS = {
