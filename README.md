@@ -198,6 +198,8 @@ python -m src.models.train_simulator
 python -m pytest
 ```
 
+Os mesmos testes rodam automaticamente no GitHub Actions em todo PR e em todo push na `main`.
+
 ## Resultados
 
 | Modelo | AUC WP | AUC CP |
