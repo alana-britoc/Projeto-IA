@@ -57,6 +57,6 @@ def predict(bundle, values):
 
 
 def percentile(bundle, prob):
-    # % dos commits do treino com probabilidade out-of-bag menor que essa
-    q = bundle["oob_quantiles"]
+    # % dos commits da avaliacao com probabilidade menor que essa
+    q = bundle["quantiles"]
     return 100 * np.searchsorted(q, prob) / len(q)
