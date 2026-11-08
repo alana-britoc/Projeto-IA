@@ -46,8 +46,9 @@ else:
     missing = [m for m in models if m not in set(with_metric["model"])]
     if missing:
         st.caption(f"Sem {name}: {', '.join(missing)}. O DBN-JIT só tem a AUC publicada no "
-                   "artigo, e o DeepJIT e o CC2Vec não têm F1 nem MCC porque não há validação "
-                   "para escolher o limiar.")
+                   "artigo. O DeepJIT e o CC2Vec não têm F1 nem MCC, porque não há validação "
+                   "para escolher o limiar, nem Popt e Recall@20%, que precisam das linhas de "
+                   "cada commit cruzadas com as predições dos autores.")
 
     st.subheader(f"{name} por projeto e cenário")
     st.altair_chart(dashboard.project_chart(with_metric, metric, order))
