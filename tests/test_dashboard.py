@@ -22,9 +22,11 @@ def test_carrega_todos_os_modelos_versionados(data):
 def test_resultados_seguem_a_ordem_dos_modelos(data):
     comp, _, order = data
     assert list(dict.fromkeys(comp["model"])) == order
-    first = comp.head(12)
+    # 6 projetos x cenarios que existem (3 com o CP_crono da #24)
+    first = comp.head(len(PROJECTS) * comp["setting"].nunique())
     assert set(first["model"]) == {"lapredict"}
     assert list(dict.fromkeys(first["project"])) == PROJECTS
+    assert list(dict.fromkeys(first["setting"])) == SETTINGS
 
 
 def test_testes_batem_com_o_csv_da_comparacao(data):
@@ -80,6 +82,8 @@ def test_media_da_auc_do_lapredict_igual_ao_artigo(data):
 
 def test_tabela_de_testes_so_da_metrica_e_dos_modelos_escolhidos(data):
     _, tests, _ = data
+    # como na pagina: a tabela usa so os testes da comparacao escolhida
+    tests = tests[tests["cenarios"] == "WP+CP"]
     out = dashboard.tests_table(tests, "auc", ["random_forest", "svm"])
     assert list(out["Modelo"]) == ["random_forest", "svm"]
     assert "Resultado" in out.columns
