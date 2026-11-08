@@ -299,3 +299,14 @@ def test_save_outputs_inclui_as_duas_comparacoes(tmp_path):
     assert "## Algum modelo supera o lapredict no cenário realista" in report
     saved = pd.read_csv(tmp_path / "comparacao_testes.csv")
     assert set(saved["cenarios"]) == {"WP+CP", "WP+CP_crono"}
+
+
+def test_modelo_sem_cp_crono_fica_fora_da_comparacao_realista():
+    # os modelos do artigo (deepjit, cc2vec, dbn_jit) so tem WP e CP. No realista entrariam so
+    # com os 6 pares do WP, e com 6 pares nada e significativo: "empate" enganoso
+    comp = _comp_com_crono()
+    realista = all_tests(comp, settings=REALISTA)
+    assert not {"deepjit", "cc2vec", "dbn_jit"} & set(realista["model"])
+    assert (realista["n"] == 12).all()
+    artigo = all_tests(comp)
+    assert {"deepjit", "cc2vec", "dbn_jit"} <= set(artigo["model"])
