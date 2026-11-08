@@ -35,6 +35,8 @@ O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos s
 - **Popt:** área sob a curva de esforço acumulado × defeitos encontrados, normalizada entre a pior ordem (0) e a ordem ótima (1).
 - **Recall@20%:** fração dos commits com defeito encontrados revisando, nessa ordem, os commits que somam até 20% das linhas do teste.
 
+Com essa ordem, o tamanho do commit pesa muito: revisar do menor para o maior, sem modelo nenhum, já dá Popt 0,872 e Recall@20% 0,683 na média dos 6 projetos. Essa é a **referência sem modelo** (`results/metrics/esforco_referencia.csv`), e o mérito de um modelo nessas métricas é o quanto ele passa dela.
+
 ## Estrutura do repositório
 
 ```text
@@ -145,6 +147,14 @@ python -m src.evaluation.deep_baselines ../ISSTA21-JIT-DP/ResultAnalysis/RQ4-T8
 ```
 
 O resultado é salvo em `results/metrics/deep_baselines.csv`.
+
+**Calcular a referência sem modelo** das métricas de esforço, que revisa do menor commit para o maior (precisa do dataset):
+
+```bash
+python -m src.evaluation.effort_baseline
+```
+
+O resultado é salvo em `results/metrics/esforco_referencia.csv`, e o `compare.py` o cita no relatório.
 
 **Gerar a comparação final** contra o LApredict:
 
