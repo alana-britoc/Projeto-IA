@@ -25,7 +25,11 @@ def _clean(df, features):
 
 
 def load_split(project, setting="WP", features=FEATURES):
-    """Retorna dict com X_train, y_train, X_test, y_test, ids_test."""
+    """Retorna dict com X_train, y_train, X_test, y_test, ids_test e effort_test.
+
+    effort_test = la + ld de cada commit de teste (#25), usado nas metricas de esforco. Vem do
+    CSV, entao existe mesmo quando o modelo nao usa essas features.
+    """
     if setting == "WP":
         df = pd.read_csv(RAW / project / f"{project}_k_feature.csv")
         cut = int(len(df) * 0.8)
@@ -38,5 +42,7 @@ def load_split(project, setting="WP", features=FEATURES):
 
     X_train, y_train, _ = _clean(train, features)
     X_test, y_test, ids_test = _clean(test, features)
+    lines, _, _ = _clean(test, ["la", "ld"])
     return {"X_train": X_train, "y_train": y_train,
-            "X_test": X_test, "y_test": y_test, "ids_test": ids_test}
+            "X_test": X_test, "y_test": y_test, "ids_test": ids_test,
+            "effort_test": lines.sum(axis=1)}

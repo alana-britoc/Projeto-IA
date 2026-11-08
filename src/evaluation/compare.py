@@ -17,7 +17,8 @@ from src.evaluation.stats import holm, paired_test
 
 METRICS_DIR = ROOT / "results" / "metrics"
 DEEP = METRICS_DIR / "deep_baselines.csv"
-METRICS =["auc", "pr_auc", "f1", "mcc"]
+# todas as metricas de metrics.py, incluindo as de esforco da #25 (popt e recall_20)
+METRICS = list(METRIC_NAMES)
 KEYS = ["model", "project", "setting"]
 BASELINE = "lapredict"
 ALPHA = 0.05
@@ -35,6 +36,8 @@ def load_results(metrics_dir=METRICS_DIR):
 def aggregate(results):
     # media das seeds: o par do teste estatistico e projeto x cenario
     # (o lapredict nao tem busca, entao as seeds dele sao identicas)
+    # CSV rodado antes de uma metrica existir fica com ela vazia (NaN), em vez de quebrar
+    results = results.reindex(columns=list(dict.fromkeys([*results.columns, *METRICS])))
     agg = results.groupby(KEYS, as_index=False)[METRICS].mean()
     agg["source"] = "nosso"
     return agg
@@ -139,7 +142,9 @@ def verdict(row, alpha=ALPHA):
 
 
 def all_tests(comp, baseline=BASELINE):
-    tests = [compare_to_baseline(comp, m, baseline) for m in METRICS]
+    # so testa as metricas que o baseline tem (ex.: CSV antigo, sem as metricas de esforco)
+    has = comp.loc[comp["model"] == baseline, METRICS].notna().any()
+    tests = [compare_to_baseline(comp, m, baseline) for m in METRICS if has[m]]
     out = pd.concat([t for t in tests if not t.empty], ignore_index=True)
     out["verdict"] = out.apply(verdict, axis=1)
     return out
@@ -178,6 +183,21 @@ def summary_markdown(summ):
     return "\n".join(lines)
 
 
+def _effort_reference_note(path):
+    """Nota com a referencia sem modelo (src/evaluation/effort_baseline.py), se o CSV existir."""
+    if not path.exists():
+        return []
+    ref = pd.read_csv(path).groupby("setting")[["popt", "recall_20"]].mean()
+    ref = ref.reindex([s for s in ("WP", "CP", "CP_crono") if s in ref.index])
+    values = "; ".join(f"{r.Index}: Popt {r.popt:.3f}, Recall@20% {r.recall_20:.3f}"
+                       for r in ref.itertuples())
+    return ["**Referência sem modelo para Popt e Recall@20%:** revisar do menor commit para o "
+            f"maior, sem usar nenhum modelo, já dá {values}. Como a ordem de revisão é a "
+            "densidade de risco (probabilidade ÷ linhas), o tamanho do commit pesa muito nessas "
+            "métricas, e o mérito de um modelo é só o quanto ele passa dessa referência "
+            "(ver Yang et al., 2016).", ""]
+
+
 def save_outputs(comp, tests, metrics_dir=METRICS_DIR, report=REPORT):
     """Salva as tabelas em results/metrics/ e o relatorio em results/comparacao.md."""
     metrics_dir.mkdir(parents=True, exist_ok=True)
@@ -207,9 +227,11 @@ def save_outputs(comp, tests, metrics_dir=METRICS_DIR, report=REPORT):
     if deep:
         text += [f"{', '.join(deep)}: AUC e PR-AUC calculados a partir das predições publicadas "
                  "pelos autores. F1 e MCC ficam de fora porque não há dados de validação "
-                 "para escolher o limiar.", ""]
+                 "para escolher o limiar, e Popt e Recall@20% porque as predições não foram "
+                 "cruzadas com as linhas de cada commit.", ""]
     if paper:
         text += [f"{', '.join(paper)}: só a AUC publicada no artigo (Tabela 8).", ""]
+    text += _effort_reference_note(metrics_dir / "esforco_referencia.csv")
     text += [answer(tests),
              "Pares = projeto × cenário, com a média das seeds de cada modelo. "
              "O p-valor é do Wilcoxon pareado bicaudal, corrigido por Holm entre os modelos "
