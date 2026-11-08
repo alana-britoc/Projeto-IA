@@ -216,3 +216,21 @@ def test_save_outputs_gera_tabelas_e_relatorio(tmp_path):
     assert "## Algum modelo supera o lapredict?" in report
     assert "| bom |" in report
     assert "só a AUC publicada" in report
+
+
+def test_relatorio_mostra_a_referencia_de_esforco_quando_existe(tmp_path):
+    # #25: sem a referencia, Popt alto parece merito do modelo
+    pd.DataFrame({"project": ["qt", "qt"], "setting": ["WP", "CP"], "popt": [0.8, 0.8],
+                  "recall_20": [0.6, 0.6]}).to_csv(tmp_path / "esforco_referencia.csv",
+                                                   index=False)
+    comp = _comp_com_ruido()
+    save_outputs(comp, all_tests(comp), tmp_path, tmp_path / "comparacao.md")
+    report = (tmp_path / "comparacao.md").read_text(encoding="utf-8")
+    assert "Referência sem modelo" in report
+    assert "0.800" in report and "0.600" in report
+
+
+def test_relatorio_sem_referencia_de_esforco_nao_quebra(tmp_path):
+    comp = _comp_com_ruido()
+    save_outputs(comp, all_tests(comp), tmp_path, tmp_path / "comparacao.md")
+    assert "Referência sem modelo" not in (tmp_path / "comparacao.md").read_text(encoding="utf-8")
