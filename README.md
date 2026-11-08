@@ -8,7 +8,7 @@ Projeto da disciplina de Inteligência Artificial. A equipe replica e estende o 
 
 **Nome da equipe:** Commit Limpo
 
-| Integrante | Conta no GitHub | Responsabilidade |
+| Integrante | Conta no GitHub | Responsabilidade inicial |
 | --- | --- | --- |
 | Alana de Brito Cavalcanti | `@alana-britoc` | Carregamento dos dados, reprodução do LApredict e do LR-JIT, script de experimentos e README |
 | João Araújo | `@joaogabrielarj` | Random Forest, HistGradientBoosting, SVM e MLP |
@@ -21,7 +21,7 @@ Predição de defeitos *just-in-time* (JIT) tenta prever, no momento do commit, 
 
 O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos simples. A conclusão foi que o LApredict, uma regressão logística que usa só o número de linhas adicionadas (`la`), fica no mesmo nível ou acima dos modelos profundos.
 
-**Objetivo:** reproduzir os baselines do artigo e testar se outros modelos clássicos de Machine Learning superam o LApredict nas mesmas condições. Os modelos testados são Random Forest, HistGradientBoosting, SVM e MLP, todos com as 14 features de Kamei.
+**Objetivo:** reproduzir os baselines do artigo e testar se outros modelos clássicos de Machine Learning superam o LApredict nas mesmas condições. Os modelos testados são Random Forest, HistGradientBoosting, LightGBM, XGBoost, SVM e MLP, todos com as 14 features de Kamei.
 
 **Dados:** commits de seis projetos open source (qt, openstack, jdt, platform, gerrit e go), disponibilizados pelos autores do artigo. Cada commit tem 14 features de Kamei e um rótulo indicando se introduziu defeito. A origem e o formato estão em [`data/README.md`](data/README.md).
 
@@ -44,6 +44,7 @@ Com essa ordem, o tamanho do commit pesa muito: revisar do menor para o maior, s
 
 ```text
 .
+├── .github/                  # modelos de issue e PR e o workflow dos testes
 ├── data/
 │   ├── raw/                  # datasets dos autores (não versionados)
 │   ├── processed/
@@ -54,23 +55,24 @@ Com essa ordem, o tamanho do commit pesa muito: revisar do menor para o maior, s
 │   ├── resultados.py         # página de resultados
 │   ├── dashboard.py          # dados e gráficos da página de resultados
 │   ├── simulador.py          # página do simulador de commit
-│   ├── data/loader.py        # leitura dos CSVs e divisão WP/CP
+│   ├── data/loader.py        # leitura dos CSVs e divisão WP, CP e CP cronológico
 │   ├── preprocessing/        # padronização das features
 │   ├── models/
 │   │   ├── registry.py        # modelos e espaços de busca de hiperparâmetros
-│   │   ├── train_simulator.py # treina o modelo do simulador
-│   │   └── simulator.py       # carrega o modelo e calcula a probabilidade
+│   │   ├── train_simulator.py # treina e calibra o modelo do simulador
+│   │   └── simulator.py       # probabilidade e explicação com SHAP
 │   └── evaluation/
-│       ├── metrics.py        # AUC, PR-AUC, F1, MCC e escolha do limiar
+│       ├── metrics.py        # AUC, PR-AUC, F1, MCC, Popt, Recall@20% e limiar
 │       ├── reproduce.py      # reprodução do LApredict e do LR-JIT
 │       ├── run_experiment.py # grade modelo x projeto x cenário x seed
 │       ├── deep_baselines.py # métricas do DeepJIT e do CC2Vec
+│       ├── effort_baseline.py # referência sem modelo das métricas de esforço
 │       ├── compare.py        # comparação final contra o LApredict
 │       ├── feature_importance.py # importância das features nos modelos de árvore
 │       ├── stats.py          # Wilcoxon, Holm e Cliff's delta
 │       └── plots.py          # gráficos da comparação
 ├── models/
-│   └── simulador.joblib      # Random Forest do simulador (versionado)
+│   └── simulador.joblib      # Random Forest calibrado do simulador (versionado)
 ├── tests/
 ├── notebooks/
 ├── results/
