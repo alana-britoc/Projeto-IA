@@ -4,7 +4,7 @@ from streamlit.testing.v1 import AppTest
 
 from src import dashboard
 from src.data.loader import PROJECTS, ROOT
-from src.evaluation.plots import model_colors
+from src.evaluation.plots import REFERENCE_MARKERS, model_colors
 
 
 @pytest.fixture(scope="module")
@@ -82,6 +82,15 @@ def test_graficos_usam_as_cores_das_figuras(data):
     colors = model_colors(order)
     assert dict(zip(scale["domain"], scale["range"])) == colors
     assert dashboard.mean_chart(comp, "auc", order).to_dict()
+
+
+def test_modelos_do_artigo_tem_forma_propria_no_grafico(data):
+    # os modelos do artigo sao cinza, entao a forma e que separa um do outro
+    comp, _, order = data
+    shape = dashboard.project_chart(comp, "auc", order).to_dict()["encoding"]["shape"]["scale"]
+    shapes = dict(zip(shape["domain"], shape["range"]))
+    assert {shapes[m] for m in REFERENCE_MARKERS} == set(REFERENCE_MARKERS.values())
+    assert {shapes[m] for m in order if m not in REFERENCE_MARKERS} == {"circle"}
 
 
 def test_app_abre_sem_erro_e_troca_a_metrica():

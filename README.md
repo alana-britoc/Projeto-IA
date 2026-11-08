@@ -126,7 +126,7 @@ python -m src.evaluation.run_experiment --models random_forest svm --projects qt
 
 | Opção | Valores |
 | --- | --- |
-| `--models` | `lapredict`, `lr_jit`, `random_forest`, `hist_gradient_boosting`, `svm`, `mlp` |
+| `--models` | `lapredict`, `lr_jit`, `random_forest`, `hist_gradient_boosting`, `lightgbm`, `xgboost`, `svm`, `mlp` |
 | `--projects` | `qt`, `openstack`, `jdt`, `platform`, `gerrit`, `go` |
 | `--settings` | `WP`, `CP` |
 | `--seeds` | uma ou mais seeds inteiras |
@@ -155,7 +155,7 @@ O script lê todos os `results/metrics/experimentos_*.csv` e o `deep_baselines.c
 - `results/figures/*.png`: gráficos comparativos
 - `results/comparacao.md`: relatório com a resposta à pergunta "algum modelo supera o LApredict?"
 
-Um modelo novo entra na comparação sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo.
+Um modelo novo entra na comparação sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo. A única coisa a fazer à mão é dar uma cor ao modelo em `MODEL_COLORS` (`src/evaluation/plots.py`), e um teste avisa se faltar. Os 8 modelos do grupo já ocupam as 8 cores da paleta, que foi checada para daltonismo, então um nono modelo precisa substituir algum ou ficar como referência em cinza, como o DeepJIT, o CC2Vec e o DBN-JIT.
 
 **Medir a importância das features** no Random Forest e no HistGradientBoosting (precisa do dataset):
 

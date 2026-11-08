@@ -9,7 +9,7 @@ from src.data.loader import PROJECTS
 from src.evaluation.compare import (METRICS_DIR, all_tests, answer, build_comparison,
                                     load_results, model_order)
 from src.evaluation.metrics import METRIC_NAMES
-from src.evaluation.plots import MUTED, SETTING_COLORS, model_colors
+from src.evaluation.plots import MUTED, REFERENCE_MARKERS, SETTING_COLORS, model_colors
 
 SETTINGS = ["WP", "CP"]
 SETTING_NAMES = {"WP": "WP (mesmo projeto)", "CP": "CP (outros projetos)"}
@@ -91,12 +91,18 @@ def project_chart(comp, metric, order):
     settings = [s for s in SETTINGS if s in set(data["setting"])]
     present = [m for m in order if m in set(data["model"])]
     # xOffset espalha os modelos dentro de cada projeto, senao os pontos ficam um em cima do outro
-    return alt.Chart(data).mark_circle(size=60, opacity=0.9).encode(
+    # mesma legenda pra cor e forma (mesmo campo, titulo e ordem), entao o vega junta as duas
+    legend = alt.Legend(orient="bottom", columns=5, labelLimit=200)
+    return alt.Chart(data).mark_point(size=60, opacity=0.9, filled=True).encode(
         x=alt.X("project:N", sort=PROJECTS, title=None, axis=alt.Axis(labelAngle=0)),
         xOffset=alt.XOffset("model:N", sort=present),
         y=alt.Y(f"{metric}:Q", title=name, scale=alt.Scale(zero=False)),
         color=alt.Color("model:N", title="Modelo", scale=_model_scale(order), sort=order,
-                        legend=alt.Legend(orient="bottom", columns=5, labelLimit=200)),
+                        legend=legend),
+        shape=alt.Shape("model:N", title="Modelo", sort=order, legend=legend,
+                        scale=alt.Scale(domain=order,
+                                        range=[REFERENCE_MARKERS.get(m, "circle")
+                                               for m in order])),
         column=alt.Column("setting:N", sort=settings, title=None,
                           header=alt.Header(labelExpr=f"{SETTING_NAMES}[datum.value]")),
         tooltip=[alt.Tooltip("model:N", title="Modelo"),

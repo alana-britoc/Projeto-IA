@@ -1,5 +1,6 @@
 # modelos do experimento. pra add um novo e so colocar no MODELS
-from scipy.stats import loguniform, randint
+from lightgbm import LGBMClassifier
+from scipy.stats import loguniform, randint, uniform
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -7,6 +8,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
+from xgboost import XGBClassifier
 
 from src.data.loader import FEATURES
 
@@ -25,6 +27,18 @@ def _hist_gradient_boosting(seed):
     # early_stopping separa uma validacao aleatoria, e nao cronologica, dentro do treino.
     # desligado pra o numero de iteracoes vir so da busca
     return HistGradientBoostingClassifier(random_state=seed, early_stopping=False)
+
+
+# LightGBM e XGBoost (#26): n_jobs=1 pq a busca ja roda um processo por nucleo, e threads
+# dentro de cada um so disputam a CPU. Sem early stopping, como o HGB: o numero de arvores vem
+# da busca, e nao de uma validacao interna que nao seria cronologica
+def _lightgbm(seed):
+    # subsample so vale com subsample_freq > 0
+    return LGBMClassifier(random_state=seed, n_jobs=1, subsample_freq=1, verbose=-1)
+
+
+def _xgboost(seed):
+    return XGBClassifier(random_state=seed, n_jobs=1, tree_method="hist", eval_metric="logloss")
 
 
 def _svm(seed):
@@ -65,6 +79,26 @@ MODELS = {
                                           "min_samples_leaf": randint(10, 101),
                                           "l2_regularization": loguniform(1e-4, 10),
                                           "class_weight": [None, "balanced"]}},
+    # mesmas faixas do HGB onde o parametro equivale, pra comparar as implementacoes
+    "lightgbm": {"features": FEATURES, "build": _lightgbm,
+                 "params": {"n_estimators": randint(100, 501),
+                            "learning_rate": loguniform(1e-2, 3e-1),
+                            "num_leaves": randint(15, 64),
+                            "min_child_samples": randint(10, 101),
+                            "reg_lambda": loguniform(1e-4, 10),
+                            "subsample": uniform(0.5, 0.5),
+                            "colsample_bytree": uniform(0.5, 0.5),
+                            "class_weight": [None, "balanced"]}},
+    # scale_pos_weight faz o papel do class_weight. 3 ~ proporcao negativos/positivos do treino
+    "xgboost": {"features": FEATURES, "build": _xgboost,
+                "params": {"n_estimators": randint(100, 501),
+                           "learning_rate": loguniform(1e-2, 3e-1),
+                           "max_depth": randint(3, 11),
+                           "min_child_weight": loguniform(1, 20),
+                           "reg_lambda": loguniform(1e-4, 10),
+                           "subsample": uniform(0.5, 0.5),
+                           "colsample_bytree": uniform(0.5, 0.5),
+                           "scale_pos_weight": [1, 2, 3]}},
     "svm": {"features": FEATURES, "build": _svm,
             "params": {"calibratedclassifiercv__estimator__C": loguniform(1e-3, 1e2),
                        "calibratedclassifiercv__estimator__class_weight": [None, "balanced"]}},

@@ -2,9 +2,11 @@ import pandas as pd
 import pytest
 
 from src.data.loader import PROJECTS
-from src.evaluation.compare import all_tests, build_comparison, model_order
-from src.evaluation.plots import (PALETTE, model_colors, plot_auc_by_project, plot_effect_sizes,
+from src.evaluation.compare import PAPER_MODELS, all_tests, build_comparison, model_order
+from src.evaluation.plots import (MODEL_COLORS, PALETTE, REFERENCE_COLORS, REFERENCE_MARKERS,
+                                  model_colors, plot_auc_by_project, plot_effect_sizes,
                                   plot_metrics)
+from src.models.registry import MODELS
 
 
 @pytest.fixture
@@ -20,6 +22,31 @@ def comp():
 
 def test_model_colors_segue_a_ordem_fixa():
     assert model_colors(["a", "b"]) == {"a": PALETTE[0], "b": PALETTE[1]}
+
+
+def test_cor_segue_o_modelo_e_nao_a_posicao():
+    # se um modelo sobe no ranking, os outros nao podem trocar de cor
+    assert model_colors(["svm", "lapredict"]) == model_colors(["lapredict", "svm"])
+    assert model_colors(["mlp"])["mlp"] == MODEL_COLORS["mlp"]
+
+
+def test_todo_modelo_do_registry_tem_cor_fixa_sem_repetir():
+    assert set(MODEL_COLORS) == set(MODELS)
+    assert sorted(MODEL_COLORS.values()) == sorted(PALETTE)
+
+
+def test_modelos_do_artigo_ficam_em_cinza_com_forma_propria():
+    assert set(REFERENCE_COLORS) == set(PAPER_MODELS.values())
+    assert not set(REFERENCE_COLORS.values()) & set(PALETTE)
+    assert set(REFERENCE_MARKERS) == set(REFERENCE_COLORS)
+    colors = model_colors(["lapredict", "deepjit"])
+    assert colors["deepjit"] == REFERENCE_COLORS["deepjit"]
+
+
+def test_modelo_desconhecido_pega_uma_cor_livre():
+    colors = model_colors(["lapredict", "outro"])
+    assert colors["outro"] in PALETTE
+    assert colors["outro"] != colors["lapredict"]
 
 
 def test_model_colors_limita_a_paleta():
