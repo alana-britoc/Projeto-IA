@@ -26,7 +26,8 @@ O artigo-base comparou modelos de deep learning (DeepJIT e CC2Vec) com modelos s
 **Cenários avaliados:**
 
 - **WP (within-project):** treino nos primeiros 80% dos commits do projeto, em ordem cronológica, e teste nos 20% finais
-- **CP (cross-project):** treino nos outros cinco projetos e teste nos mesmos 20% finais
+- **CP (cross-project):** treino nos outros cinco projetos e teste nos mesmos 20% finais, como no artigo. Parte do treino é mais recente que o teste
+- **CP cronológico (`CP_crono`):** o mesmo teste do CP, mas o treino só tem os commits dos outros projetos anteriores ao primeiro commit de teste, como seria num uso real. O treino cai para 21% (jdt) a 90% (go) do CP
 
 **Métricas:** AUC, PR-AUC, F1 e MCC. O limiar de decisão do F1 e do MCC é escolhido nos 20% finais do treino, nunca no teste.
 
@@ -134,7 +135,7 @@ python -m src.evaluation.run_experiment --models random_forest svm --projects qt
 | --- | --- |
 | `--models` | `lapredict`, `lr_jit`, `random_forest`, `hist_gradient_boosting`, `lightgbm`, `xgboost`, `svm`, `mlp` |
 | `--projects` | `qt`, `openstack`, `jdt`, `platform`, `gerrit`, `go` |
-| `--settings` | `WP`, `CP` |
+| `--settings` | `WP`, `CP`, `CP_crono` |
 | `--seeds` | uma ou mais seeds inteiras |
 | `--n-iter` | combinações testadas na busca de hiperparâmetros (padrão 20, 0 desliga) |
 
@@ -162,12 +163,17 @@ O resultado é salvo em `results/metrics/esforco_referencia.csv`, e o `compare.p
 python -m src.evaluation.compare
 ```
 
-O script lê todos os `results/metrics/experimentos_*.csv` e o `deep_baselines.csv`, e usa a AUC publicada no artigo para o DBN-JIT. A média das seeds de cada modelo é comparada com o LApredict pelo teste de Wilcoxon pareado, com correção de Holm, e pelo Cliff's delta. Cada par é um projeto × cenário. O script gera:
+O script lê todos os `results/metrics/experimentos_*.csv` e o `deep_baselines.csv`, e usa a AUC publicada no artigo para o DBN-JIT. A média das seeds de cada modelo é comparada com o LApredict pelo teste de Wilcoxon pareado, com correção de Holm, e pelo Cliff's delta. Cada par é um projeto × cenário, e há duas comparações:
+
+- **como no artigo:** WP + CP (12 pares);
+- **realista:** WP + CP cronológico (12 pares), feita quando existem resultados do `CP_crono`. Testar o `CP_crono` sozinho daria só 6 pares, e com 6 pares o Wilcoxon não chega a p < 0,05 depois da correção de Holm.
+
+O script gera:
 
 - `results/metrics/comparacao_<metrica>.csv`: AUC, PR-AUC, F1, MCC, Popt e Recall@20% por modelo, projeto e cenário
-- `results/metrics/comparacao_testes.csv`: resultado dos testes estatísticos
-- `results/figures/*.png`: gráficos comparativos
-- `results/comparacao.md`: relatório com a resposta à pergunta "algum modelo supera o LApredict?"
+- `results/metrics/comparacao_testes.csv`: resultado dos testes estatísticos, com a coluna `cenarios` indicando a comparação
+- `results/figures/*.png`: gráficos comparativos, com o Cliff's delta da comparação realista em `cliffs_delta_lapredict_realista.png`
+- `results/comparacao.md`: relatório com a resposta à pergunta "algum modelo supera o LApredict?" nas duas comparações
 
 Um modelo novo entra na comparação sozinho: basta existir o `experimentos_<modelo>.csv` e rodar o comando de novo. A única coisa a fazer à mão é dar uma cor ao modelo em `MODEL_COLORS` (`src/evaluation/plots.py`), e um teste avisa se faltar. Os 8 modelos do grupo já ocupam as 8 cores da paleta, que foi checada para daltonismo, então um nono modelo precisa substituir algum ou ficar como referência em cinza, como o DeepJIT, o CC2Vec e o DBN-JIT.
 
@@ -179,7 +185,7 @@ streamlit run src/app.py
 
 O painel abre em http://localhost:8501 e tem duas páginas, **Resultados** e **Simulador de commit**, escolhidas no menu lateral. Nenhuma das duas precisa do dataset.
 
-A página de resultados lê os CSVs versionados em `results/metrics/` e usa as mesmas funções do `compare.py`, então mostra os mesmos números de `results/comparacao.md`. Na barra lateral dá para escolher a métrica e filtrar por modelo, projeto e cenário. A página mostra:
+A página de resultados lê os CSVs versionados em `results/metrics/` e usa as mesmas funções do `compare.py`, então mostra os mesmos números de `results/comparacao.md`. Na barra lateral dá para escolher a métrica, filtrar por modelo, projeto e cenário e escolher a comparação estatística (como no artigo ou realista). A página mostra:
 
 - a resposta à pergunta "algum modelo supera o LApredict?";
 - a média da métrica por modelo e o valor em cada projeto e cenário, em gráficos interativos;
