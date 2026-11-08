@@ -145,3 +145,41 @@ def plot_effect_sizes(tests, baseline="lapredict", path=None):
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)
     return path
+
+
+MODEL_NAMES = {"random_forest": "Random Forest", "hist_gradient_boosting": "HistGradientBoosting"}
+
+
+def plot_feature_importance(imp, path=None):
+    path = path or FIGURES_DIR / "importancia_features.png"
+    models = list(dict.fromkeys(imp["model"]))
+    fig, axes = plt.subplots(1, len(models), figsize=(5.5 * len(models), 6), facecolor=SURFACE,
+                             squeeze=False)
+    for ax, model in zip(axes[0], models):
+        _style(ax)
+        sub = imp[imp["model"] == model]
+        order = sub.groupby("feature")["importance_mean"].mean().sort_values(ascending=False)
+        for y, feature in enumerate(order.index):
+            for setting, offset in (("WP", -0.12), ("CP", 0.12)):
+                vals = sub.loc[(sub["feature"] == feature) & (sub["setting"] == setting),
+                               "importance_mean"]
+                ax.scatter(vals, [y + offset] * len(vals), s=30, color=SETTING_COLORS[setting],
+                           edgecolors=SURFACE, linewidths=1.2, zorder=3,
+                           label=setting if y == 0 else None)
+            ax.plot([order[feature]] * 2, [y - 0.3, y + 0.3], color=INK, linewidth=2, zorder=4)
+        ax.axvline(0, color=AXIS, linewidth=1, zorder=1)
+        ax.set_yticks(range(len(order)), order.index)
+        ax.set_ylim(len(order) - 0.5, -0.5)
+        ax.set_xlabel("queda da AUC ao embaralhar a feature", color=INK_2, fontsize=9)
+        ax.set_title(MODEL_NAMES.get(model, model), loc="left", color=INK, fontsize=11,
+                     fontweight="bold")
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper right", frameon=False, ncol=2, fontsize=9,
+               labelcolor=INK_2)
+    fig.suptitle("Importância por permutação no teste (traço = média dos 6 projetos × WP/CP)",
+                 x=0.01, ha="left", color=INK, fontsize=12)
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
+    return path
