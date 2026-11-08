@@ -210,21 +210,27 @@ python -m pytest
 
 ## Resultados
 
-| Modelo | AUC WP | AUC CP |
-| --- | --- | --- |
-| Random Forest | 0,758 | 0,737 |
-| HistGradientBoosting | 0,754 | 0,738 |
-| MLP | 0,738 | 0,709 |
-| **LApredict** | **0,725** | **0,725** |
-| DeepJIT | 0,706 | 0,670 |
-| CC2Vec | 0,706 | 0,675 |
-| SVM | 0,693 | 0,669 |
-| LR-JIT | 0,689 | 0,667 |
-| DBN-JIT | 0,671 | 0,663 |
+| Modelo | AUC WP | AUC CP | AUC CP cronológico |
+| --- | --- | --- | --- |
+| LightGBM | 0,760 | 0,740 | 0,738 |
+| Random Forest | 0,758 | 0,737 | 0,732 |
+| XGBoost | 0,757 | 0,739 | 0,737 |
+| HistGradientBoosting | 0,754 | 0,738 | 0,735 |
+| MLP | 0,732 | 0,711 | 0,709 |
+| **LApredict** | **0,725** | **0,725** | **0,725** |
+| DeepJIT | 0,706 | 0,670 | — |
+| CC2Vec | 0,706 | 0,675 | — |
+| SVM | 0,693 | 0,669 | 0,665 |
+| LR-JIT | 0,689 | 0,667 | 0,664 |
+| DBN-JIT | 0,671 | 0,663 | — |
 
-Média dos 6 projetos. A reprodução do LApredict chegou à mesma AUC média publicada no artigo (0,725).
+Média dos 6 projetos. A reprodução do LApredict chegou à mesma AUC média publicada no artigo (0,725). DeepJIT, CC2Vec e DBN-JIT não têm CP cronológico, porque os números vêm do artigo e das predições dos autores.
 
-O Random Forest e o HistGradientBoosting superam o LApredict com diferença significativa: o HistGradientBoosting nas quatro métricas, e o Random Forest em AUC, F1 e MCC. O ganho é pequeno, de 0,02 a 0,03 de AUC. O MLP empata com o LApredict, e os demais modelos perdem em AUC, o que confirma a conclusão do artigo sobre os modelos de deep learning.
+**Como no artigo (WP + CP):** LightGBM, XGBoost, Random Forest e HistGradientBoosting superam o LApredict com diferença significativa em AUC, F1, MCC, Popt e Recall@20%, e todos menos o Random Forest também em PR-AUC. O ganho é pequeno, de 0,01 a 0,035 de AUC. O MLP empata com o LApredict em todas as métricas, e SVM, LR-JIT e os modelos de deep learning perdem em AUC, o que confirma a conclusão do artigo.
+
+**No cenário realista (WP + CP cronológico):** a vantagem das árvores se mantém em AUC, PR-AUC, Popt e Recall@20%, e em MCC para todas menos o Random Forest. Em F1, nenhum modelo supera o LApredict. Do CP para o CP cronológico, a AUC das árvores cai no máximo 0,005, mesmo com o treino do jdt reduzido a 21%.
+
+**Métricas de esforço:** revisar do menor commit para o maior, sem modelo nenhum, já dá Popt 0,872. As árvores chegam a 0,883, e o LApredict fica praticamente na referência (0,872).
 
 As tabelas completas, os testes estatísticos e as limitações estão em [`results/comparacao.md`](results/comparacao.md).
 
