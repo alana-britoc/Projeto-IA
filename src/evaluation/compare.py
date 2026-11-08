@@ -17,7 +17,8 @@ from src.evaluation.stats import holm, paired_test
 
 METRICS_DIR = ROOT / "results" / "metrics"
 DEEP = METRICS_DIR / "deep_baselines.csv"
-METRICS =["auc", "pr_auc", "f1", "mcc"]
+# todas as metricas de metrics.py, incluindo as de esforco da #25 (popt e recall_20)
+METRICS = list(METRIC_NAMES)
 KEYS = ["model", "project", "setting"]
 BASELINE = "lapredict"
 ALPHA = 0.05
@@ -35,6 +36,8 @@ def load_results(metrics_dir=METRICS_DIR):
 def aggregate(results):
     # media das seeds: o par do teste estatistico e projeto x cenario
     # (o lapredict nao tem busca, entao as seeds dele sao identicas)
+    # CSV rodado antes de uma metrica existir fica com ela vazia (NaN), em vez de quebrar
+    results = results.reindex(columns=list(dict.fromkeys([*results.columns, *METRICS])))
     agg = results.groupby(KEYS, as_index=False)[METRICS].mean()
     agg["source"] = "nosso"
     return agg
@@ -139,7 +142,9 @@ def verdict(row, alpha=ALPHA):
 
 
 def all_tests(comp, baseline=BASELINE):
-    tests = [compare_to_baseline(comp, m, baseline) for m in METRICS]
+    # so testa as metricas que o baseline tem (ex.: CSV antigo, sem as metricas de esforco)
+    has = comp.loc[comp["model"] == baseline, METRICS].notna().any()
+    tests = [compare_to_baseline(comp, m, baseline) for m in METRICS if has[m]]
     out = pd.concat([t for t in tests if not t.empty], ignore_index=True)
     out["verdict"] = out.apply(verdict, axis=1)
     return out
