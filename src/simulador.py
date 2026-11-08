@@ -1,17 +1,20 @@
 ﻿"""Pagina do simulador de commit (#20). Abre pelo src/app.py."""
+import altair as alt
 import sklearn
 import streamlit as st
 
 from src.data.loader import PROJECTS
+from src.evaluation.plots import PALETTE
 from src.models import simulator
 
 
 @st.cache_resource
 def carregar():
-    return simulator.load()
+    bundle = simulator.load()
+    return bundle, simulator.load_explainer(bundle)
 
 
-bundle = carregar()
+bundle, explicador = carregar()
 
 st.title("Simulador de commit")
 st.warning("**Demonstração.** O modelo foi treinado com os commits de 6 projetos de código "
@@ -57,20 +60,55 @@ with resultado:
     st.subheader("Resultado")
     st.metric("Probabilidade de introduzir defeito", f"{prob:.0%}")
     st.progress(prob)
-    st.metric("Mais arriscado que", f"{pct:.0f}% dos commits do treino")
-    st.caption("O modelo dá mais peso aos commits com defeito durante o treino, então a "
-               "probabilidade tende a ficar acima da frequência real "
-               f"({bundle['defect_rate']:.0%} dos commits do treino tinham defeito). Por isso "
-               "a comparação com os commits do treino é mais fácil de interpretar.")
+    st.metric("Mais arriscado que", f"{pct:.0f}% dos commits")
+    st.caption("A probabilidade é calibrada: entre os commits que o modelo marca com 30%, "
+               "cerca de 30% tinham defeito de verdade. Nos commits mais recentes dos 6 "
+               f"projetos, {bundle['defect_rate']:.0%} tinham defeito.")
 
     with st.expander("Sobre o modelo"):
         params = bundle["params"]
-        n_train = f"{bundle['n_train']:,}".replace(",", ".")
+        n = {k: f"{bundle[k]:,}".replace(",", ".") for k in ("n_train", "n_calib", "n_eval")}
+        brier = bundle["brier"]
         st.markdown(
             f"- Random Forest com {params['n_estimators']} árvores de profundidade até "
-            f"{params['max_depth']}\n"
-            f"- Treinado com {n_train} commits\n"
-            f"- AUC out-of-bag: {bundle['oob_auc']:.3f}\n"
+            f"{params['max_depth']}, calibrado com o método {bundle['method']}\n"
+            f"- {n['n_train']} commits de treino, {n['n_calib']} de calibração e "
+            f"{n['n_eval']} de avaliação (80%, 10% e 10% de cada projeto, em ordem de data)\n"
+            f"- Brier score na avaliação: {brier['sem calibração']:.3f} sem calibração e "
+            f"{brier[bundle['method']]:.3f} calibrado (menor é melhor)\n"
+            f"- AUC na avaliação: {bundle['auc']:.3f}\n"
             f"- scikit-learn {bundle['sklearn_version']}\n\n"
             "Os outros hiperparâmetros são os que a busca escolheu mais vezes nos "
             "experimentos. Para treinar de novo: `python -m src.models.train_simulator`.")
+
+
+def rotulo(linha):
+    if linha.feature == "fix":
+        return f"{linha.nome}: {'sim' if linha.valor else 'não'}"
+    inteiro = simulator.FIELDS[linha.feature][1]
+    valor = f"{linha.valor:.0f}" if inteiro else f"{linha.valor:.2f}"
+    return f"{linha.nome}: {valor}"
+
+
+contrib, base = simulator.contributions(explicador, bundle, values)
+contrib["pontos"] = 100 * contrib["contribuicao"]
+contrib["rotulo"] = [rotulo(linha) for linha in contrib.itertuples()]
+contrib["efeito"] = ["aumenta o risco" if p > 0 else "diminui o risco" for p in contrib["pontos"]]
+score = base + contrib["contribuicao"].sum()
+
+st.subheader("O que mais pesou neste commit")
+grafico = alt.Chart(contrib).mark_bar().encode(
+    x=alt.X("pontos:Q", title="pontos no score do modelo"),
+    y=alt.Y("rotulo:N", sort=None, title=None, axis=alt.Axis(labelLimit=320)),
+    color=alt.Color("efeito:N", title=None,
+                    scale=alt.Scale(domain=["aumenta o risco", "diminui o risco"],
+                                    range=[PALETTE[1], PALETTE[0]]),
+                    legend=alt.Legend(orient="bottom")),
+    tooltip=[alt.Tooltip("nome:N", title="Métrica"), alt.Tooltip("valor:Q", title="Valor"),
+             alt.Tooltip("pontos:Q", title="Pontos", format="+.1f")],
+)
+st.altair_chart(grafico, width="stretch")
+st.caption(f"Contribuição de cada métrica calculada com SHAP. O score do Random Forest parte "
+           f"de {100 * base:.0f} pontos, o mesmo para qualquer commit, e as barras somadas levam "
+           f"até {100 * score:.0f} pontos. A calibração transforma esse score na probabilidade "
+           "acima sem mudar a ordem: o que aumenta o score também aumenta a probabilidade.")

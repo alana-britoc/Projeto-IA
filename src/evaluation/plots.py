@@ -3,6 +3,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+from sklearn.calibration import calibration_curve  # noqa: E402
 
 from src.data.loader import PROJECTS, ROOT, SETTINGS  # noqa: E402
 from src.evaluation.metrics import METRIC_NAMES  # noqa: E402
@@ -227,6 +228,30 @@ def plot_feature_importance(imp, path=None):
     fig.suptitle("Importância por permutação no teste (traço = média dos 6 projetos × WP/CP)",
                  x=0.01, ha="left", color=INK, fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.94))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
+    return path
+
+
+def plot_calibration(y_true, probs, path=None):
+    # curva de confiabilidade do simulador (#29), um traco por metodo
+    path =path or FIGURES_DIR / "calibracao_simulador.png"
+    fig, ax = plt.subplots(figsize=(6.5, 6), facecolor=SURFACE)
+    _style(ax)
+    ax.grid(axis="y", color=GRID, linewidth=0.8)
+    ax.plot([0, 1], [0, 1], color=MUTED, linewidth=1, linestyle="--", label="perfeita")
+    for color, (name, prob) in zip(PALETTE, probs.items()):
+        frac, mean = calibration_curve(y_true, prob, n_bins=10, strategy="quantile")
+        ax.plot(mean, frac, marker="o", markersize=5, color=color, linewidth=2, label=name)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_xlabel("probabilidade prevista", color=INK_2, fontsize=9)
+    ax.set_ylabel("fração real de commits com defeito", color=INK_2, fontsize=9)
+    ax.legend(frameon=False, fontsize=9, labelcolor=INK_2, loc="upper left")
+    ax.set_title("Calibração do simulador nos 10% finais de cada projeto", loc="left",
+                 color=INK, fontsize=11)
+    fig.tight_layout()
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)

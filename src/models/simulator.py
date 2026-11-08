@@ -1,6 +1,8 @@
 """Carrega o modelo do simulador de commit (#20) e calcula a probabilidade de defeito."""
 import joblib
 import numpy as np
+import pandas as pd
+import shap
 import sklearn
 
 from src.data.loader import ROOT
@@ -57,6 +59,21 @@ def predict(bundle, values):
 
 
 def percentile(bundle, prob):
-    # % dos commits do treino com probabilidade out-of-bag menor que essa
-    q = bundle["oob_quantiles"]
+    # % dos commits da avaliacao com probabilidade menor que essa
+    q = bundle["quantiles"]
     return 100 * np.searchsorted(q, prob) / len(q)
+
+
+def load_explainer(bundle):
+    return shap.TreeExplainer(bundle["forest"])
+
+
+def contributions(explainer, bundle, values):
+    # quanto cada feature empurra o score do random forest (antes da calibracao)
+    x = np.array([[float(values[f]) for f in bundle["features"]]])
+    sv = explainer.shap_values(x)[0, :, 1]
+    out = pd.DataFrame({"feature": bundle["features"],
+                        "nome": [FIELDS[f][0] for f in bundle["features"]],
+                        "valor": x[0], "contribuicao": sv})
+    out = out.reindex(out["contribuicao"].abs().sort_values(ascending=False).index)
+    return out.reset_index(drop=True), float(explainer.expected_value[1])
