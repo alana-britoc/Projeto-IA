@@ -205,7 +205,7 @@ A página de resultados lê os CSVs versionados em `results/metrics/` e usa as m
 
 Os testes estatísticos usam sempre os 12 pares projeto × cenário. Os filtros mudam os gráficos e as tabelas, mas não os testes.
 
-No simulador, a pessoa preenche as 14 métricas de Kamei de um commit e vê a probabilidade de ele introduzir defeito, além de quanto ele é mais arriscado que os outros commits. Os campos começam com a mediana dos commits dos 6 projetos. É uma demonstração: o modelo só vale para commits parecidos com os dos 6 projetos.
+No simulador, a pessoa preenche as 14 métricas de Kamei de um commit e vê a probabilidade de ele introduzir defeito, além de quanto ele é mais arriscado que os outros commits. Os campos começam com a mediana dos commits dos 6 projetos. Abaixo do resultado, um gráfico mostra quanto cada métrica aumentou ou diminuiu o risco daquele commit, calculado com SHAP sobre o Random Forest antes da calibração. É uma demonstração: o modelo só vale para commits parecidos com os dos 6 projetos.
 
 O modelo do simulador é um Random Forest salvo em `models/simulador.joblib`. Ele usa os hiperparâmetros que a busca escolheu mais vezes nos experimentos, com 100 árvores e profundidade máxima 12 para o arquivo ficar abaixo de 10 MB. Os commits de cada projeto são divididos em ordem de data: os primeiros 80% treinam o modelo, os 10% seguintes calibram a probabilidade e os 10% finais avaliam a calibração. A calibração escolhe entre os métodos sigmoid e isotônico pelo Brier score. Sem ela, a probabilidade média dava 43%, quase o dobro da taxa real de defeitos. O resultado fica em `results/metrics/calibracao_simulador.csv` e `results/figures/calibracao_simulador.png`.
 
