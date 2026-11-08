@@ -58,7 +58,7 @@ def run_one(model_name, project, setting, seed, n_iter=20):
 
     row = {"model": model_name, "project": project, "setting": setting, "seed": seed,
            "n_train": len(y), "n_test": len(d["y_test"])}
-    row.update(compute_metrics(d["y_test"], y_prob, threshold))
+    row.update(compute_metrics(d["y_test"], y_prob, threshold, effort=d["effort_test"]))
     row.update({"n_iter": n_iter if params else 0, "cv_auc": cv_auc,
                 "best_params": json.dumps(best_params, default=float),
                 "tune_s": tune_s, "train_s": train_s, "test_s": test_s})
