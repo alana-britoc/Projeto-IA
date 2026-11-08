@@ -1,17 +1,20 @@
 ﻿"""Pagina do simulador de commit (#20). Abre pelo src/app.py."""
+import altair as alt
 import sklearn
 import streamlit as st
 
 from src.data.loader import PROJECTS
+from src.evaluation.plots import PALETTE
 from src.models import simulator
 
 
 @st.cache_resource
 def carregar():
-    return simulator.load()
+    bundle = simulator.load()
+    return bundle, simulator.load_explainer(bundle)
 
 
-bundle = carregar()
+bundle, explicador = carregar()
 
 st.title("Simulador de commit")
 st.warning("**Demonstração.** O modelo foi treinado com os commits de 6 projetos de código "
@@ -77,3 +80,35 @@ with resultado:
             f"- scikit-learn {bundle['sklearn_version']}\n\n"
             "Os outros hiperparâmetros são os que a busca escolheu mais vezes nos "
             "experimentos. Para treinar de novo: `python -m src.models.train_simulator`.")
+
+
+def rotulo(linha):
+    if linha.feature == "fix":
+        return f"{linha.nome}: {'sim' if linha.valor else 'não'}"
+    inteiro = simulator.FIELDS[linha.feature][1]
+    valor = f"{linha.valor:.0f}" if inteiro else f"{linha.valor:.2f}"
+    return f"{linha.nome}: {valor}"
+
+
+contrib, base = simulator.contributions(explicador, bundle, values)
+contrib["pontos"] = 100 * contrib["contribuicao"]
+contrib["rotulo"] = [rotulo(linha) for linha in contrib.itertuples()]
+contrib["efeito"] = ["aumenta o risco" if p > 0 else "diminui o risco" for p in contrib["pontos"]]
+score = base + contrib["contribuicao"].sum()
+
+st.subheader("O que mais pesou neste commit")
+grafico = alt.Chart(contrib).mark_bar().encode(
+    x=alt.X("pontos:Q", title="pontos no score do modelo"),
+    y=alt.Y("rotulo:N", sort=None, title=None, axis=alt.Axis(labelLimit=320)),
+    color=alt.Color("efeito:N", title=None,
+                    scale=alt.Scale(domain=["aumenta o risco", "diminui o risco"],
+                                    range=[PALETTE[1], PALETTE[0]]),
+                    legend=alt.Legend(orient="bottom")),
+    tooltip=[alt.Tooltip("nome:N", title="Métrica"), alt.Tooltip("valor:Q", title="Valor"),
+             alt.Tooltip("pontos:Q", title="Pontos", format="+.1f")],
+)
+st.altair_chart(grafico, width="stretch")
+st.caption(f"Contribuição de cada métrica calculada com SHAP. O score do Random Forest parte "
+           f"de {100 * base:.0f} pontos, o mesmo para qualquer commit, e as barras somadas levam "
+           f"até {100 * score:.0f} pontos. A calibração transforma esse score na probabilidade "
+           "acima sem mudar a ordem: o que aumenta o score também aumenta a probabilidade.")
