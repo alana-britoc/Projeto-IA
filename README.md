@@ -4,6 +4,8 @@
 
 Projeto da disciplina de Inteligência Artificial. A equipe replica e estende o artigo *Deep Just-in-Time Defect Prediction: How Far Are We?* (Zeng et al., ISSTA 2021).
 
+**Painel online:** https://commit-limpo.streamlit.app
+
 ## Equipe
 
 **Nome da equipe:** Commit Limpo
@@ -195,6 +197,8 @@ streamlit run src/app.py
 ```
 
 O painel abre em http://localhost:8501 e tem duas páginas, **Resultados** e **Simulador de commit**, escolhidas no menu lateral. Nenhuma das duas precisa do dataset.
+
+A mesma versão está publicada no Streamlit Community Cloud, em https://commit-limpo.streamlit.app, e é atualizada sozinha a cada merge na `main`. O deploy instala as dependências de `src/requirements.txt`, que tem só o que o painel usa, com o scikit-learn na mesma versão do modelo do simulador.
 
 A página de resultados lê os CSVs versionados em `results/metrics/` e usa as mesmas funções do `compare.py`, então mostra os mesmos números de `results/comparacao.md`. Na barra lateral dá para escolher a métrica, filtrar por modelo, projeto e cenário e escolher a comparação estatística (como no artigo ou realista). A página mostra:
 
