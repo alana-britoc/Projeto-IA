@@ -4,27 +4,29 @@ Gerado por `python -m src.evaluation.compare`. Não edite à mão.
 
 ## Média dos 6 projetos
 
-| Modelo | AUC WP | AUC CP | PR-AUC WP | PR-AUC CP | F1 WP | F1 CP | MCC WP | MCC CP |
-|---|---|---|---|---|---|---|---|---|
-| lapredict | 0.725 | 0.725 | 0.436 | 0.436 | 0.412 | 0.403 | 0.242 | 0.232 |
-| lightgbm | 0.760 | 0.740 | 0.492 | 0.469 | 0.507 | 0.472 | 0.310 | 0.283 |
-| xgboost | 0.757 | 0.739 | 0.489 | 0.468 | 0.503 | 0.471 | 0.304 | 0.285 |
-| random_forest | 0.758 | 0.737 | 0.488 | 0.460 | 0.504 | 0.471 | 0.308 | 0.283 |
-| hist_gradient_boosting | 0.754 | 0.738 | 0.486 | 0.466 | 0.506 | 0.468 | 0.305 | 0.279 |
-| mlp | 0.732 | 0.711 | 0.471 | 0.447 | 0.484 | 0.448 | 0.268 | 0.259 |
-| cc2vec | 0.706 | 0.675 | 0.431 | 0.414 | — | — | — | — |
-| deepjit | 0.706 | 0.670 | 0.433 | 0.413 | — | — | — | — |
-| svm | 0.693 | 0.669 | 0.435 | 0.406 | 0.460 | 0.437 | 0.218 | 0.201 |
-| lr_jit | 0.689 | 0.667 | 0.433 | 0.406 | 0.466 | 0.432 | 0.227 | 0.201 |
-| dbn_jit | 0.671 | 0.663 | — | — | — | — | — | — |
+| Modelo | AUC WP | AUC CP | PR-AUC WP | PR-AUC CP | F1 WP | F1 CP | MCC WP | MCC CP | Popt WP | Popt CP | Recall@20% WP | Recall@20% CP |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| lapredict | 0.725 | 0.725 | 0.436 | 0.436 | 0.412 | 0.403 | 0.242 | 0.232 | 0.872 | 0.873 | 0.691 | 0.685 |
+| lightgbm | 0.760 | 0.740 | 0.492 | 0.469 | 0.507 | 0.472 | 0.310 | 0.283 | 0.883 | 0.881 | 0.707 | 0.706 |
+| xgboost | 0.757 | 0.739 | 0.489 | 0.468 | 0.503 | 0.471 | 0.304 | 0.285 | 0.883 | 0.881 | 0.706 | 0.705 |
+| random_forest | 0.758 | 0.737 | 0.488 | 0.460 | 0.504 | 0.471 | 0.308 | 0.283 | 0.882 | 0.879 | 0.705 | 0.702 |
+| hist_gradient_boosting | 0.754 | 0.738 | 0.486 | 0.466 | 0.506 | 0.468 | 0.305 | 0.279 | 0.882 | 0.881 | 0.705 | 0.704 |
+| mlp | 0.732 | 0.711 | 0.471 | 0.447 | 0.484 | 0.448 | 0.268 | 0.259 | 0.876 | 0.869 | 0.696 | 0.689 |
+| cc2vec | 0.706 | 0.675 | 0.431 | 0.414 | — | — | — | — | — | — | — | — |
+| deepjit | 0.706 | 0.670 | 0.433 | 0.413 | — | — | — | — | — | — | — | — |
+| svm | 0.693 | 0.669 | 0.435 | 0.406 | 0.460 | 0.437 | 0.218 | 0.201 | 0.874 | 0.872 | 0.689 | 0.689 |
+| lr_jit | 0.689 | 0.667 | 0.433 | 0.406 | 0.466 | 0.432 | 0.227 | 0.201 | 0.867 | 0.872 | 0.682 | 0.690 |
+| dbn_jit | 0.671 | 0.663 | — | — | — | — | — | — | — | — | — | — |
 
-cc2vec, deepjit: AUC e PR-AUC calculados a partir das predições publicadas pelos autores. F1 e MCC ficam de fora porque não há dados de validação para escolher o limiar.
+cc2vec, deepjit: AUC e PR-AUC calculados a partir das predições publicadas pelos autores. F1 e MCC ficam de fora porque não há dados de validação para escolher o limiar, e Popt e Recall@20% porque as predições não foram cruzadas com as linhas de cada commit.
 
 dbn_jit: só a AUC publicada no artigo (Tabela 8).
 
+**Referência sem modelo para Popt e Recall@20%:** revisar do menor commit para o maior, sem usar nenhum modelo, já dá WP: Popt 0.872, Recall@20% 0.683; CP: Popt 0.872, Recall@20% 0.683. Como a ordem de revisão é a densidade de risco (probabilidade ÷ linhas), o tamanho do commit pesa muito nessas métricas, e o mérito de um modelo é só o quanto ele passa dessa referência (ver Yang et al., 2016).
+
 ## Algum modelo supera o lapredict?
 
-**Sim:** lightgbm em AUC, xgboost em AUC, random_forest em AUC, hist_gradient_boosting em AUC, lightgbm em PR-AUC, xgboost em PR-AUC, hist_gradient_boosting em PR-AUC, lightgbm em F1, xgboost em F1, random_forest em F1, hist_gradient_boosting em F1, lightgbm em MCC, xgboost em MCC, random_forest em MCC, hist_gradient_boosting em MCC.
+**Sim:** lightgbm em AUC, xgboost em AUC, random_forest em AUC, hist_gradient_boosting em AUC, lightgbm em PR-AUC, xgboost em PR-AUC, hist_gradient_boosting em PR-AUC, lightgbm em F1, xgboost em F1, random_forest em F1, hist_gradient_boosting em F1, lightgbm em MCC, xgboost em MCC, random_forest em MCC, hist_gradient_boosting em MCC, lightgbm em Popt, xgboost em Popt, random_forest em Popt, hist_gradient_boosting em Popt, lightgbm em Recall@20%, xgboost em Recall@20%, random_forest em Recall@20%, hist_gradient_boosting em Recall@20%.
 
 | Modelo | Métrica | Pares | Vitórias/derrotas | Mediana da diferença | p (Holm) | Cliff's delta | Resultado |
 |---|---|---|---|---|---|---|---|
@@ -61,6 +63,20 @@ dbn_jit: só a AUC publicada no artigo (Tabela 8).
 | mlp | MCC | 12 | 8/4 | +0.0158 | 0.5288 | +0.306 (pequeno) | empate |
 | svm | MCC | 12 | 3/9 | -0.0313 | 0.5288 | -0.278 (pequeno) | empate |
 | lr_jit | MCC | 12 | 3/9 | -0.0296 | 0.5288 | -0.250 (pequeno) | empate |
+| lightgbm | Popt | 12 | 12/0 | +0.0069 | 0.0034 | +0.167 (pequeno) | supera |
+| xgboost | Popt | 12 | 12/0 | +0.0075 | 0.0034 | +0.167 (pequeno) | supera |
+| random_forest | Popt | 12 | 12/0 | +0.0065 | 0.0034 | +0.167 (pequeno) | supera |
+| hist_gradient_boosting | Popt | 12 | 12/0 | +0.0069 | 0.0034 | +0.167 (pequeno) | supera |
+| mlp | Popt | 12 | 5/7 | -0.0008 | 1.0000 | -0.028 (negligível) | empate |
+| svm | Popt | 12 | 7/5 | +0.0016 | 1.0000 | +0.028 (negligível) | empate |
+| lr_jit | Popt | 12 | 6/6 | +0.0004 | 1.0000 | +0.000 (negligível) | empate |
+| lightgbm | Recall@20% | 12 | 12/0 | +0.0117 | 0.0034 | +0.222 (pequeno) | supera |
+| xgboost | Recall@20% | 12 | 12/0 | +0.0118 | 0.0034 | +0.222 (pequeno) | supera |
+| random_forest | Recall@20% | 12 | 12/0 | +0.0097 | 0.0034 | +0.222 (pequeno) | supera |
+| hist_gradient_boosting | Recall@20% | 12 | 12/0 | +0.0101 | 0.0034 | +0.222 (pequeno) | supera |
+| mlp | Recall@20% | 12 | 6/6 | +0.0004 | 1.0000 | +0.056 (negligível) | empate |
+| svm | Recall@20% | 12 | 7/5 | +0.0014 | 1.0000 | +0.056 (negligível) | empate |
+| lr_jit | Recall@20% | 12 | 6/5 | +0.0006 | 1.0000 | +0.035 (negligível) | empate |
 
 Pares = projeto × cenário, com a média das seeds de cada modelo. O p-valor é do Wilcoxon pareado bicaudal, corrigido por Holm entre os modelos de cada métrica. Magnitude do Cliff's delta pelos limiares de Romano et al. (2006).
 
