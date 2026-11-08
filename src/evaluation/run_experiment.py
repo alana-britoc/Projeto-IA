@@ -10,7 +10,7 @@ import pandas as pd
 from sklearn.base import clone
 from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
 
-from src.data.loader import PROJECTS, ROOT, load_split
+from src.data.loader import PROJECTS, ROOT, SETTINGS, load_split
 from src.evaluation.metrics import best_threshold, compute_metrics
 from src.models.registry import MODELS, get_model
 
@@ -86,7 +86,7 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--models", nargs="+", default=list(MODELS), choices=list(MODELS))
     parser.add_argument("--projects", nargs="+", default=PROJECTS, choices=PROJECTS)
-    parser.add_argument("--settings", nargs="+", default=["WP", "CP"], choices=["WP", "CP"])
+    parser.add_argument("--settings", nargs="+", default=SETTINGS, choices=SETTINGS)
     parser.add_argument("--seeds", nargs="+", type=int, default=[0])
     parser.add_argument("--n-iter", type=int, default=20,
                         help="combinações testadas na busca de hiperparâmetros (0 desliga)")

@@ -3,6 +3,9 @@
 - WP (within-project): raw/<p>/<p>_k_feature.csv, primeiros 80% treino, últimos 20% teste
   (mesma regra de JIT_Baseline/prepare_data.py; o CSV já está em ordem cronológica).
 - CP (cross-project): raw/<p>/cross/k_train.csv (outros 5 projetos) e k_test.csv.
+- CP_crono (#24): o mesmo teste do CP, mas o treino so tem os commits de k_train.csv com
+  data anterior ao primeiro commit de teste. No CP do artigo parte do treino e mais recente
+  que o teste, o que nao seria possivel num uso real.
 """
 from pathlib import Path
 
@@ -14,6 +17,7 @@ RAW = ROOT / "data" / "raw"
 PROJECTS = ["qt", "openstack", "jdt", "platform", "gerrit", "go"]
 FEATURES = ["ns", "nd", "nf", "entrophy", "la", "ld", "lt", "fix",
             "ndev", "age", "nuc", "exp", "rexp", "sexp"]
+SETTINGS = ["WP", "CP", "CP_crono"]
 
 
 def _clean(df, features):
@@ -34,9 +38,13 @@ def load_split(project, setting="WP", features=FEATURES):
         df = pd.read_csv(RAW / project / f"{project}_k_feature.csv")
         cut = int(len(df) * 0.8)
         train, test = df.iloc[:cut], df.iloc[cut:]
-    elif setting == "CP":
+    elif setting in ("CP", "CP_crono"):
         train = pd.read_csv(RAW / project / "cross" / "k_train.csv")
         test = pd.read_csv(RAW / project / "cross" / "k_test.csv")
+        if setting == "CP_crono":
+            # o k_train.csv ja vem em ordem de data, entao os 20% finais do treino (validacao
+            # do limiar no run_one) continuam sendo os commits mais recentes
+            train = train[train["date"] < test["date"].min()]
     else:
         raise ValueError(f"setting inválido: {setting}")
 
