@@ -212,7 +212,8 @@ def save_outputs(comp, tests, metrics_dir=METRICS_DIR, report=REPORT):
     if deep:
         text += [f"{', '.join(deep)}: AUC e PR-AUC calculados a partir das predições publicadas "
                  "pelos autores. F1 e MCC ficam de fora porque não há dados de validação "
-                 "para escolher o limiar.", ""]
+                 "para escolher o limiar, e Popt e Recall@20% porque as predições não foram "
+                 "cruzadas com as linhas de cada commit.", ""]
     if paper:
         text += [f"{', '.join(paper)}: só a AUC publicada no artigo (Tabela 8).", ""]
     text += [answer(tests),
