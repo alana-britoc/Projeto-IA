@@ -105,6 +105,11 @@ def test_argumento_invalido_falha_antes_de_rodar(output, monkeypatch, args):
     assert not list(output.glob("*.csv"))
 
 
+def test_aceita_o_cenario_cp_crono(output, monkeypatch):
+    run_main(monkeypatch, "--models", "lapredict", "--projects", "qt", "--settings", "CP_crono")
+    assert pd.read_csv(output / "experimentos_lapredict.csv")["setting"].tolist() == ["CP_crono"]
+
+
 def test_cada_modelo_salva_no_proprio_arquivo(output):
     base = {"project": "qt", "setting": "WP", "seed": 0}
     run_experiment.save({**base, "model": "a", "auc": 0.1})
