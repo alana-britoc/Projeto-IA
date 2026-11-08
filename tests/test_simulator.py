@@ -144,3 +144,41 @@ def test_app_tem_as_duas_paginas():
     at.switch_page("simulador.py").run()
     assert not at.exception
     assert any("Simulador" in t.value for t in at.title)
+
+
+@pytest.fixture(scope="module")
+def explicador(bundle):
+    return simulator.load_explainer(bundle)
+
+
+@pytest.mark.parametrize("la, fix", [(10, 0), (2000, 0), (1, 1)])
+def test_contribuicoes_mais_a_base_dao_o_score_do_forest(bundle, explicador, la, fix):
+    values = {**bundle["medians"], "la": la, "fix": fix}
+    contrib, base = simulator.contributions(explicador, bundle, values)
+    x = np.array([[values[f] for f in bundle["features"]]])
+    score = bundle["forest"].predict_proba(x)[0, 1]
+    assert base + contrib["contribuicao"].sum() == pytest.approx(score, abs=1e-6)
+
+
+def test_contribuicoes_tem_as_14_features_em_ordem_de_impacto(bundle, explicador):
+    contrib, _ = simulator.contributions(explicador, bundle, bundle["medians"])
+    assert sorted(contrib["feature"]) == sorted(FEATURES)
+    impacto = contrib["contribuicao"].abs().to_list()
+    assert impacto == sorted(impacto, reverse=True)
+    assert contrib.loc[contrib["feature"] == "la", "nome"].item() == "Linhas adicionadas"
+
+
+def test_muitas_linhas_adicionadas_aumentam_o_risco(bundle, explicador):
+    contrib, _ = simulator.contributions(explicador, bundle, {**bundle["medians"], "la": 2000})
+    assert contrib.iloc[0]["feature"] == "la"
+    assert contrib.iloc[0]["contribuicao"] > 0
+
+
+def test_pagina_mostra_a_explicacao_e_atualiza(bundle):
+    at = AppTest.from_file(str(ROOT / "src" / "simulador.py"), default_timeout=60).run()
+    assert not at.exception
+    assert any("O que mais pesou" in h.value for h in at.subheader)
+    legenda = [c.value for c in at.caption if "SHAP" in c.value]
+    at.number_input(key="sim_la").set_value(3000).run()
+    assert not at.exception
+    assert [c.value for c in at.caption if "SHAP" in c.value] != legenda
