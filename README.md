@@ -204,10 +204,12 @@ A mesma versão está publicada no Streamlit Community Cloud, em https://commit-
 
 A página de resultados lê os CSVs versionados em `results/metrics/` e usa as mesmas funções do `compare.py`, então mostra os mesmos números de `results/comparacao.md`. Na barra lateral dá para escolher a métrica, filtrar por modelo, projeto e cenário e escolher a comparação estatística (como no artigo ou realista). A página mostra:
 
-- a resposta à pergunta "algum modelo supera o LApredict?";
-- a média da métrica por modelo e o valor em cada projeto e cenário, em gráficos interativos;
-- os testes de Wilcoxon e o Cliff's delta contra o LApredict;
-- a tabela completa dos resultados.
+- no topo, a resposta à pergunta "algum modelo supera o LApredict?";
+- a aba **Ganho sobre o LApredict**, com a diferença média de cada modelo para o LApredict, colorida pelo resultado do teste estatístico, e a tabela com o Wilcoxon e o Cliff's delta;
+- a aba **Mapa de calor**, com o valor da métrica por modelo e projeto em um cenário;
+- a aba **Cenário realista**, com uma linha por modelo ligando o CP ao CP cronológico;
+- a aba **Pontos**, com a média por modelo e o valor em cada projeto e cenário;
+- a aba **Tabela**, com todos os resultados.
 
 Os testes estatísticos usam sempre os 12 pares projeto × cenário. Os filtros mudam os gráficos e as tabelas, mas não os testes.
 
