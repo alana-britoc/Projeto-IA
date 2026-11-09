@@ -85,7 +85,7 @@ def test_tabela_de_testes_so_da_metrica_e_dos_modelos_escolhidos(data):
     # como na pagina: a tabela usa so os testes da comparacao escolhida
     tests = tests[tests["cenarios"] == "WP+CP"]
     out = dashboard.tests_table(tests, "auc", ["random_forest", "svm"])
-    assert list(out["Modelo"]) == ["random_forest", "svm"]
+    assert list(out["Modelo"]) == ["Random Forest", "SVM"]
     assert "Resultado" in out.columns
 
 
@@ -120,3 +120,66 @@ def test_app_troca_para_a_comparacao_realista():
     at.sidebar.radio[0].set_value("WP+CP_crono").run()
     assert not at.exception
     assert any("cenário realista" in h.value for h in at.subheader)
+
+
+def test_nomes_legiveis_dos_modelos(data):
+    _, _, order = data
+    assert dashboard.model_name("hist_gradient_boosting") == "HistGradientBoosting"
+    assert dashboard.model_name("modelo_novo") == "modelo_novo"
+    assert all(m in dashboard.MODEL_NAMES for m in order)
+
+
+@pytest.mark.parametrize("comparison", ["WP+CP", "WP+CP_crono"])
+def test_ganho_usa_os_mesmos_pares_e_resultados_dos_testes(data, comparison):
+    comp, tests, order = data
+    gains = dashboard.gain_table(comp, tests, "auc", comparison, order)
+    t = tests[(tests["metric"] == "auc") & (tests["cenarios"] == comparison)]
+    assert set(gains["model"]) == set(t["model"])
+    assert "lapredict" not in set(gains["model"])
+    assert list(gains["ganho"]) == sorted(gains["ganho"], reverse=True)
+    lgbm = gains.set_index("model").loc["lightgbm"]
+    assert lgbm["verdict"] == "supera" and lgbm["ganho"] > 0
+
+
+def test_ganho_e_a_media_da_diferenca_nos_pares(data):
+    comp, tests, order = data
+    gains = dashboard.gain_table(comp, tests, "auc", "WP+CP", order).set_index("model")
+    pares = comp[comp["setting"].isin(["WP", "CP"])].pivot_table(
+        index=["project", "setting"], columns="model", values="auc")
+    esperado = (pares["svm"] - pares["lapredict"]).mean()
+    assert gains.loc["svm", "ganho"] == pytest.approx(esperado)
+
+
+def test_ganho_tira_modelo_sem_o_cenario_cronologico(data):
+    comp, tests, order = data
+    gains = dashboard.gain_table(comp, tests, "auc", "WP+CP_crono", order)
+    assert not {"deepjit", "cc2vec", "dbn_jit"} & set(gains["model"])
+
+
+def test_mapa_de_calor_usa_so_o_cenario_escolhido(data):
+    comp, _, order = data
+    chart = dashboard.heatmap_chart(comp, "auc", order, "CP_crono")
+    assert set(chart.data["setting"]) == {"CP_crono"}
+    assert chart.to_dict()
+
+
+def test_inclinacao_so_tem_modelos_com_cp_e_cp_crono(data):
+    comp, _, order = data
+    dados = dashboard.slope_chart(comp, "auc", order).data
+    assert set(dados["setting"]) == {"CP", "CP_crono"}
+    assert "deepjit" not in set(dados["model"])
+    assert dados.groupby("model")["setting"].nunique().eq(2).all()
+
+
+def test_app_tem_as_cinco_abas():
+    at = AppTest.from_file(str(ROOT / "src" / "app.py"), default_timeout=60).run()
+    assert not at.exception
+    assert [t.label for t in at.tabs] == ["Ganho sobre o LApredict", "Mapa de calor",
+                                          "Cenário realista", "Pontos", "Tabela"]
+
+
+def test_aba_realista_avisa_quando_falta_um_dos_cenarios():
+    at = AppTest.from_file(str(ROOT / "src" / "app.py"), default_timeout=60).run()
+    at.sidebar.multiselect[2].set_value(["WP"]).run()
+    assert not at.exception
+    assert any("CP cronológico nos filtros" in i.value for i in at.info)
